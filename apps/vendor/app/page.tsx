@@ -1,0 +1,840 @@
+"use client";
+
+import { FormEvent, useEffect, useMemo, useState } from "react";
+
+type Product = {
+  id: string;
+  storeId: string;
+  name: string;
+  category: string;
+  unit: string;
+  price: number;
+  mrp: number;
+  imageUrl?: string;
+  tag: string;
+  inStock: boolean;
+};
+
+type Order = {
+  id: string;
+  phone: string;
+  status: string;
+  total: number;
+  createdAt: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+  }>;
+};
+
+type Shop = {
+  id: string;
+  name: string;
+  category: string;
+  isOpen: boolean;
+  rating: number;
+};
+
+type Summary = {
+  metrics: {
+    activeOrders: number;
+    completedOrders: number;
+    inStockProducts: number;
+    totalOrders: number;
+    totalRevenue: number;
+  };
+  orders: Order[];
+  products: Product[];
+  shop: Shop;
+};
+
+type AdminSummary = {
+  totals: {
+    activeOrders: number;
+    completedOrders: number;
+    products: number;
+    revenue: number;
+    shops: number;
+    totalOrders: number;
+  };
+  shops: Array<Shop & {
+    activeOrders: number;
+    completedOrders: number;
+    productCount: number;
+    totalOrders: number;
+    totalRevenue: number;
+  }>;
+};
+
+type VendorSession = {
+  shop: Shop;
+  token: string;
+};
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const orderStatuses = ["accepted", "preparing", "ready", "completed", "rejected"];
+
+const emptyProduct = {
+  category: "Fruits",
+  id: "",
+  imageUrl: "",
+  inStock: true,
+  mrp: 0,
+  name: "",
+  price: 0,
+  tag: "",
+  unit: ""
+};
+
+const emptyOnboarding = {
+  category: "Bakala",
+  ownerPhone: "",
+  shopId: "",
+  shopName: ""
+};
+
+export default function VendorHome() {
+  const [view, setView] = useState<
+    "onboarding" | "login" | "dashboard" | "adminLogin" | "adminDashboard"
+  >("login");
+  const [shop, setShop] = useState<Shop | null>(null);
+  const [vendorToken, setVendorToken] = useState("");
+  const [adminToken, setAdminToken] = useState("");
+  const [adminPhone, setAdminPhone] = useState("");
+  const [loginPhone, setLoginPhone] = useState("");
+  const [onboardingForm, setOnboardingForm] = useState(emptyOnboarding);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [adminSummary, setAdminSummary] = useState<AdminSummary | null>(null);
+  const [productForm, setProductForm] = useState(emptyProduct);
+  const [activeView, setActiveView] = useState<"orders" | "inventory">("orders");
+
+  const shopId = shop?.id;
+  const activeOrders = useMemo(
+    () =>
+      summary?.orders.filter((order) =>
+        ["placed", "accepted", "preparing", "ready"].includes(order.status)
+      ) ?? [],
+    [summary]
+  );
+
+  const loadSummary = async (nextShopId = shopId) => {
+    if (!nextShopId) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/shops/${nextShopId}/summary`, {
+        headers: {
+          Authorization: `Bearer ${vendorToken}`
+        }
+      });
+      const data = (await response.json()) as Summary | { error?: string };
+
+      if (!response.ok) {
+        throw new Error("error" in data ? data.error : "Unable to load vendor data");
+      }
+
+      setSummary(data as Summary);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadAdminSummary = async (token = adminToken) => {
+    if (!token) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/admin/summary`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = (await response.json()) as AdminSummary | { error?: string };
+
+      if (!response.ok) {
+        throw new Error("error" in data ? data.error : "Unable to load admin data");
+      }
+
+      setAdminSummary(data as AdminSummary);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Unable to load admin data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (shopId && view === "dashboard") {
+      void loadSummary(shopId);
+    }
+  }, [shopId, view]);
+
+  useEffect(() => {
+    if (adminToken && view === "adminDashboard") {
+      void loadAdminSummary(adminToken);
+    }
+  }, [adminToken, view]);
+
+  const onboardVendor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/onboarding`, {
+        body: JSON.stringify(onboardingForm),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      });
+      const data = (await response.json()) as Partial<VendorSession> & {
+        error?: string;
+      };
+
+      if (!response.ok || !data.shop || !data.token) {
+        throw new Error(data.error ?? "Unable to create vendor shop");
+      }
+
+      setShop(data.shop);
+      setVendorToken(data.token);
+      setView("dashboard");
+    } catch (signupError) {
+      setError(signupError instanceof Error ? signupError.message : "Unable to sign up");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginVendor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/login`, {
+        body: JSON.stringify({ ownerPhone: loginPhone }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      });
+      const data = (await response.json()) as Partial<VendorSession> & {
+        error?: string;
+      };
+
+      if (!response.ok || !data.shop || !data.token) {
+        throw new Error(data.error ?? "Unable to login");
+      }
+
+      setShop(data.shop);
+      setVendorToken(data.token);
+      setView("dashboard");
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Unable to login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginAdmin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/admin/login`, {
+        body: JSON.stringify({ phone: adminPhone }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      });
+      const data = (await response.json()) as { error?: string; token?: string };
+
+      if (!response.ok || !data.token) {
+        throw new Error(data.error ?? "Unable to login as admin");
+      }
+
+      setAdminToken(data.token);
+      setView("adminDashboard");
+      await loadAdminSummary(data.token);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Unable to login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveProduct = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!shopId) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...productForm,
+        id: productForm.id || undefined,
+        imageUrl: productForm.imageUrl || undefined
+      };
+      const response = await fetch(`${apiUrl}/vendor/shops/${shopId}/products`, {
+        body: JSON.stringify(payload),
+        headers: {
+          Authorization: `Bearer ${vendorToken}`,
+          "Content-Type": "application/json"
+        },
+        method: "PUT"
+      });
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to save product");
+      }
+
+      setProductForm(emptyProduct);
+      await loadSummary(shopId);
+      setActiveView("inventory");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save product");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const editProduct = (product: Product) => {
+    setProductForm({
+      category: product.category,
+      id: product.id,
+      imageUrl: product.imageUrl ?? "",
+      inStock: product.inStock,
+      mrp: product.mrp,
+      name: product.name,
+      price: product.price,
+      tag: product.tag,
+      unit: product.unit
+    });
+    setActiveView("inventory");
+  };
+
+  const updateOrderStatus = async (orderId: string, status: string) => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/orders/${orderId}/status`, {
+        body: JSON.stringify({ status }),
+        headers: {
+          Authorization: `Bearer ${vendorToken}`,
+          "Content-Type": "application/json"
+        },
+        method: "PATCH"
+      });
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to update order");
+      }
+
+      await loadSummary();
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : "Unable to update order");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (view === "adminDashboard") {
+    return (
+      <main className="appShell">
+        <aside className="sidebar">
+          <div className="brandRow">
+            <div className="mark small">B</div>
+            <div>
+              <p className="eyebrow">Admin portal</p>
+              <h2>Bazzato Ops</h2>
+            </div>
+          </div>
+          <button className="navButton active">Overview</button>
+          <button
+            className="navButton"
+            onClick={() => {
+              setAdminToken("");
+              setAdminSummary(null);
+              setView("login");
+            }}
+          >
+            Logout
+          </button>
+        </aside>
+
+        <section className="workspace">
+          <header className="topbar">
+            <div>
+              <p className="eyebrow">Admin dashboard</p>
+              <h1>Marketplace overview</h1>
+            </div>
+            <button
+              className="secondaryButton"
+              disabled={isLoading}
+              onClick={() => loadAdminSummary()}
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </button>
+          </header>
+
+          {error ? <div className="errorBanner">{error}</div> : null}
+
+          <section className="metricsGrid">
+            <Metric label="Shops" value={adminSummary?.totals.shops ?? 0} />
+            <Metric label="Active orders" value={adminSummary?.totals.activeOrders ?? 0} />
+            <Metric label="Products" value={adminSummary?.totals.products ?? 0} />
+            <Metric label="Revenue" value={`SAR ${adminSummary?.totals.revenue ?? 0}`} />
+          </section>
+
+          <section className="section">
+            <div className="sectionHeader">
+              <h2>Vendor performance</h2>
+              <span>{adminSummary?.totals.totalOrders ?? 0} orders</span>
+            </div>
+            <div className="productList">
+              {(adminSummary?.shops ?? []).map((item) => (
+                <article className="adminShopRow" key={item.id}>
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {item.category} - {item.productCount} items - rating {item.rating}
+                    </small>
+                  </span>
+                  <span>{item.activeOrders} active</span>
+                  <span>{item.completedOrders} completed</span>
+                  <span>SAR {item.totalRevenue}</span>
+                </article>
+              ))}
+            </div>
+          </section>
+        </section>
+      </main>
+    );
+  }
+
+  if (view !== "dashboard") {
+    return (
+      <main className="authShell">
+        <section className="authPanel">
+          <div className="mark">B</div>
+          <p className="eyebrow">Vendor portal</p>
+          <h1>
+            {view === "onboarding"
+              ? "Create your shop"
+              : view === "adminLogin"
+                ? "Admin login"
+                : "Vendor login"}
+          </h1>
+          <p className="summary">
+            Sign up your shop, manage inventory, receive orders, and update order
+            status for mobile customers.
+          </p>
+
+          <div className="authTabs">
+            <button
+              className={view === "login" ? "tabButton active" : "tabButton"}
+              onClick={() => setView("login")}
+            >
+              Login
+            </button>
+            <button
+              className={view === "onboarding" ? "tabButton active" : "tabButton"}
+              onClick={() => setView("onboarding")}
+            >
+              Sign up
+            </button>
+            <button
+              className={view === "adminLogin" ? "tabButton active" : "tabButton"}
+              onClick={() => setView("adminLogin")}
+            >
+              Admin
+            </button>
+          </div>
+
+          {error ? <div className="errorBanner">{error}</div> : null}
+
+          {view === "adminLogin" ? (
+            <form className="authForm" onSubmit={loginAdmin}>
+              <label>
+                Admin mobile number
+                <input
+                  required
+                  inputMode="tel"
+                  minLength={10}
+                  value={adminPhone}
+                  onChange={(event) => setAdminPhone(event.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+              <button className="primaryButton" disabled={isLoading} type="submit">
+                {isLoading ? "Logging in..." : "Login to admin"}
+              </button>
+            </form>
+          ) : view === "login" ? (
+            <form className="authForm" onSubmit={loginVendor}>
+              <label>
+                Registered mobile number
+                <input
+                  required
+                  inputMode="tel"
+                  minLength={10}
+                  value={loginPhone}
+                  onChange={(event) => setLoginPhone(event.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+              <button className="primaryButton" disabled={isLoading} type="submit">
+                {isLoading ? "Logging in..." : "Login to dashboard"}
+              </button>
+            </form>
+          ) : (
+            <form className="authForm" onSubmit={onboardVendor}>
+              <label>
+                Shop name
+                <input
+                  required
+                  value={onboardingForm.shopName}
+                  onChange={(event) =>
+                    setOnboardingForm((current) => ({
+                      ...current,
+                      shopName: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Shop id
+                <input
+                  placeholder="fresh-mart"
+                  value={onboardingForm.shopId}
+                  onChange={(event) =>
+                    setOnboardingForm((current) => ({
+                      ...current,
+                      shopId: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Shop type
+                <select
+                  value={onboardingForm.category}
+                  onChange={(event) =>
+                    setOnboardingForm((current) => ({
+                      ...current,
+                      category: event.target.value
+                    }))
+                  }
+                >
+                  <option>Bakala</option>
+                  <option>Groceries</option>
+                  <option>Fruits</option>
+                  <option>Dairy</option>
+                  <option>Bakery</option>
+                  <option>Snacks</option>
+                </select>
+              </label>
+              <label>
+                Owner mobile number
+                <input
+                  required
+                  inputMode="tel"
+                  minLength={10}
+                  value={onboardingForm.ownerPhone}
+                  onChange={(event) =>
+                    setOnboardingForm((current) => ({
+                      ...current,
+                      ownerPhone: event.target.value.replace(/\D/g, "")
+                    }))
+                  }
+                />
+              </label>
+              <button className="primaryButton" disabled={isLoading} type="submit">
+                {isLoading ? "Creating..." : "Create shop and continue"}
+              </button>
+            </form>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="appShell">
+      <aside className="sidebar">
+        <div className="brandRow">
+          <div className="mark small">B</div>
+          <div>
+            <p className="eyebrow">Vendor portal</p>
+            <h2>{summary?.shop.name ?? shop?.name}</h2>
+          </div>
+        </div>
+        <button
+          className={activeView === "orders" ? "navButton active" : "navButton"}
+          onClick={() => setActiveView("orders")}
+        >
+          Orders
+        </button>
+        <button
+          className={activeView === "inventory" ? "navButton active" : "navButton"}
+          onClick={() => setActiveView("inventory")}
+        >
+          Inventory
+        </button>
+        <button
+          className="navButton"
+          onClick={() => {
+            setShop(null);
+            setSummary(null);
+            setVendorToken("");
+            setView("login");
+          }}
+        >
+          Logout
+        </button>
+      </aside>
+
+      <section className="workspace">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">{summary?.shop.category ?? shop?.category}</p>
+            <h1>{activeView === "orders" ? "Order dashboard" : "Inventory manager"}</h1>
+          </div>
+          <button className="secondaryButton" disabled={isLoading} onClick={() => loadSummary()}>
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </button>
+        </header>
+
+        {error ? <div className="errorBanner">{error}</div> : null}
+
+        <section className="metricsGrid">
+          <Metric label="Active orders" value={summary?.metrics.activeOrders ?? 0} />
+          <Metric label="Completed" value={summary?.metrics.completedOrders ?? 0} />
+          <Metric label="In stock" value={summary?.metrics.inStockProducts ?? 0} />
+          <Metric label="Revenue" value={`₹${summary?.metrics.totalRevenue ?? 0}`} />
+        </section>
+
+        {activeView === "orders" ? (
+          <section className="section">
+            <div className="sectionHeader">
+              <h2>Orders for {summary?.shop.name ?? shop?.name}</h2>
+              <span>{activeOrders.length} active</span>
+            </div>
+            <div className="orderList">
+              {(summary?.orders ?? []).map((order) => (
+                <article className="orderCard" key={order.id}>
+                  <div>
+                    <p className="orderId">{order.id}</p>
+                    <p className="muted">
+                      +91 {order.phone} - ₹{order.total} - {order.status}
+                    </p>
+                    <p className="muted">
+                      {order.items
+                        .map((item) => `${item.quantity}x ${item.name}`)
+                        .join(", ")}
+                    </p>
+                  </div>
+                  <div className="statusActions">
+                    {orderStatuses.map((status) => (
+                      <button
+                        className="tinyButton"
+                        disabled={isLoading || order.status === status}
+                        key={status}
+                        onClick={() => updateOrderStatus(order.id, status)}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              ))}
+              {summary?.orders.length === 0 ? (
+                <div className="emptyState">No orders received for this shop yet.</div>
+              ) : null}
+            </div>
+          </section>
+        ) : (
+          <section className="inventoryGrid">
+            <form className="section productForm" onSubmit={saveProduct}>
+              <div className="sectionHeader">
+                <h2>{productForm.id ? "Update item" : "Add inventory item"}</h2>
+              </div>
+              <label>
+                Item name
+                <input
+                  required
+                  value={productForm.name}
+                  onChange={(event) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      name: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Category
+                <select
+                  value={productForm.category}
+                  onChange={(event) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      category: event.target.value
+                    }))
+                  }
+                >
+                  <option>Fruits</option>
+                  <option>Dairy</option>
+                  <option>Bakery</option>
+                  <option>Snacks</option>
+                </select>
+              </label>
+              <label>
+                Unit
+                <input
+                  required
+                  placeholder="1 kg, 6 pieces, 500 ml"
+                  value={productForm.unit}
+                  onChange={(event) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      unit: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <div className="formRow">
+                <label>
+                  Price
+                  <input
+                    min={0}
+                    required
+                    type="number"
+                    value={productForm.price}
+                    onChange={(event) =>
+                      setProductForm((current) => ({
+                        ...current,
+                        price: Number(event.target.value)
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  MRP
+                  <input
+                    min={0}
+                    required
+                    type="number"
+                    value={productForm.mrp}
+                    onChange={(event) =>
+                      setProductForm((current) => ({
+                        ...current,
+                        mrp: Number(event.target.value)
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <label>
+                Tag
+                <input
+                  placeholder="Fresh pick, Best seller"
+                  value={productForm.tag}
+                  onChange={(event) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      tag: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Image URL
+                <input
+                  placeholder="https://example.com/apple.png"
+                  type="url"
+                  value={productForm.imageUrl}
+                  onChange={(event) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      imageUrl: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <label className="checkboxRow">
+                <input
+                  checked={productForm.inStock}
+                  type="checkbox"
+                  onChange={(event) =>
+                    setProductForm((current) => ({
+                      ...current,
+                      inStock: event.target.checked
+                    }))
+                  }
+                />
+                Available for customers
+              </label>
+              <button className="primaryButton" disabled={isLoading} type="submit">
+                {isLoading ? "Saving..." : "Save item"}
+              </button>
+            </form>
+
+            <section className="section">
+              <div className="sectionHeader">
+                <h2>Current inventory</h2>
+                <span>{summary?.products.length ?? 0} items</span>
+              </div>
+              <div className="productList">
+                {(summary?.products ?? []).map((product) => (
+                  <button
+                    className="productRow"
+                    key={product.id}
+                    onClick={() => editProduct(product)}
+                  >
+                    {product.imageUrl ? (
+                      <img alt="" className="productThumb" src={product.imageUrl} />
+                    ) : null}
+                    <span>
+                      <strong>{product.name}</strong>
+                      <small>
+                        {product.category} - {product.unit}
+                      </small>
+                    </span>
+                    <span className={product.inStock ? "stock" : "stock out"}>
+                      {product.inStock ? "In stock" : "Out"}
+                    </span>
+                    <span>₹{product.price}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </section>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number | string }) {
+  return (
+    <article className="metricCard">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </article>
+  );
+}

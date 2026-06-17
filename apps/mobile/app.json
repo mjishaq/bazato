@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Bazzato",
+    "slug": "bazzato",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "bazzato",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#18211c",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bazzato.customer"
+    },
+    "android": {
+      "package": "com.bazzato.customer",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": ["expo-location"]
+  }
+}

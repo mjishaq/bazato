@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+enum OrderStatus {
+  PLACED
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+}
+
+model User {
+  id                String   @id @default(cuid())
+  keycloakSubject   String   @unique
+  phone             String   @unique
+  role              UserRole @default(CUSTOMER)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  orders            Order[]
+  ownedShops        Shop[]   @relation("ShopOwner")
+}
+
+model Shop {
+  id             String    @id @default(cuid())
+  name           String
+  category       String
+  ownerId        String?
+  owner          User?     @relation("ShopOwner", fields: [ownerId], references: [id])
+  latitude       Decimal?  @db.Decimal(10, 7)
+  longitude      Decimal?  @db.Decimal(10, 7)
+  radiusMeters   Int       @default(100)
+  isOpen         Boolean   @default(true)
+  rating         Decimal   @default(0) @db.Decimal(2, 1)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  products       Product[]
+  orders         Order[]
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  name      String
+  category  String
+  unit      String
+  price     Int
+  mrp       Int
+  imageUrl  String?
+  tag       String?
+  inStock   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id            String          @id @default(cuid())
+  orderNumber   String          @unique
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  shopId        String
+  shop          Shop            @relation(fields: [shopId], references: [id])
+  subtotal      Int
+  deliveryFee   Int
+  total         Int
+  paymentMethod PaymentMethod   @default(COD)
+  status        OrderStatus     @default(PLACED)
+  deliveryAddress String?
+  note          String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  items         OrderItem[]
+  timeline      OrderTimeline[]
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  order     Order  @relation(fields: [orderId], references: [id])
+  productId String
+  name      String
+  quantity  Int
+  unitPrice Int
+}
+
+model OrderTimeline {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id])
+  status    OrderStatus
+  createdAt DateTime    @default(now())
+}
