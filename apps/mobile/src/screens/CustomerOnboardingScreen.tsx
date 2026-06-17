@@ -121,7 +121,7 @@ export function CustomerOnboardingScreen({
             }
             style={[styles.primaryButton, !canContinue && styles.disabledButton]}
           >
-            <Text style={styles.primaryButtonText}>Continue to login</Text>
+            <Text style={styles.primaryButtonText}>Create profile</Text>
           </Pressable>
         </View>
       </ScrollView>

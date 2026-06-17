@@ -156,14 +156,12 @@ export default function App() {
     }));
   };
 
-  const completeOnboarding = async (
-    profile: CustomerOnboardingProfile,
-    navigate: (screen: AppScreen) => void
-  ) => {
+  const completeOnboarding = (profile: CustomerOnboardingProfile) => {
     setCustomerProfile(profile);
     setDeliveryAddress(profile.address);
-    await AsyncStorage.setItem(onboardingStorageKey, JSON.stringify(profile));
-    navigate("login");
+    void AsyncStorage.setItem(onboardingStorageKey, JSON.stringify(profile)).catch(
+      () => undefined
+    );
   };
 
   const removeFromCart = (productId: string) => {
@@ -262,9 +260,10 @@ export default function App() {
           <Stack.Screen name="onboarding">
             {({ navigation }) => (
               <CustomerOnboardingScreen
-                onComplete={(profile) =>
-                  void completeOnboarding(profile, navigation.replace)
-                }
+                onComplete={(profile) => {
+                  completeOnboarding(profile);
+                  navigation.replace("login");
+                }}
               />
             )}
           </Stack.Screen>
