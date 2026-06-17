@@ -51,6 +51,18 @@ type RootStackParamList = Record<AppScreen, undefined>;
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const onboardingStorageKey = "bazzato.customer.onboarding";
 
+function isCompleteCustomerProfile(
+  profile: Partial<CustomerOnboardingProfile> | null
+): profile is CustomerOnboardingProfile {
+  return Boolean(
+    profile?.address &&
+      profile.email &&
+      profile.name &&
+      profile.phone &&
+      profile.preference
+  );
+}
+
 export default function App() {
   const [cart, setCart] = useState<CartQuantities>({});
   const [order, setOrder] = useState<Order | null>(null);
@@ -92,9 +104,12 @@ export default function App() {
           return;
         }
 
-        const profile = JSON.parse(value) as CustomerOnboardingProfile;
-        setCustomerProfile(profile);
-        setDeliveryAddress(profile.address);
+        const profile = JSON.parse(value) as Partial<CustomerOnboardingProfile>;
+
+        if (isCompleteCustomerProfile(profile)) {
+          setCustomerProfile(profile);
+          setDeliveryAddress(profile.address);
+        }
       })
       .catch(() => undefined)
       .finally(() => setHasLoadedOnboarding(true));
@@ -182,7 +197,7 @@ export default function App() {
   const placeOrder = async (navigate: (screen: AppScreen) => void) => {
     const nextOrder = await createCodOrder({
       lines: cartSummary.lines,
-      phone: session?.phone ?? "9876543210",
+      phone: session?.phone ?? customerProfile?.phone ?? "9876543210",
       shopId: selectedShop?.id ?? env.defaultShopId,
       deliveryAddress,
       token: session?.token ?? null
@@ -270,6 +285,8 @@ export default function App() {
           <Stack.Screen name="login">
             {({ navigation }) => (
               <LoginScreen
+                initialPhone={customerProfile?.phone}
+                lockPhone={Boolean(customerProfile?.phone)}
                 onComplete={(nextSession) => {
                   setSession(nextSession);
                   navigation.replace("location");
@@ -391,6 +408,7 @@ export default function App() {
                 onOrders={() => navigation.navigate("orders")}
                 onSearch={() => navigation.navigate("search")}
                 deliveryAddress={deliveryAddress}
+                customerEmail={customerProfile?.email}
                 customerName={customerProfile?.name}
                 order={order}
                 orderCount={orders.length}

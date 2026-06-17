@@ -21,14 +21,20 @@ import { colors } from "../theme/colors";
 type LoginStep = "phone" | "otp";
 
 type LoginScreenProps = {
+  initialPhone?: string;
+  lockPhone?: boolean;
   onComplete: (session: AuthSession) => void;
 };
 
-export function LoginScreen({ onComplete }: LoginScreenProps) {
+export function LoginScreen({
+  initialPhone = "",
+  lockPhone = false,
+  onComplete
+}: LoginScreenProps) {
   const keycloakAuth = useKeycloakAuth();
   const keycloakEnabled = isKeycloakAuthEnabled();
   const [step, setStep] = useState<LoginStep>("phone");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(initialPhone);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,6 +43,10 @@ export function LoginScreen({ onComplete }: LoginScreenProps) {
   const phoneDigits = useMemo(() => phone.replace(/\D/g, ""), [phone]);
   const canRequestOtp = phoneDigits.length >= 10;
   const canVerifyOtp = otp.length === 4;
+
+  useEffect(() => {
+    setPhone(initialPhone);
+  }, [initialPhone]);
 
   useEffect(() => {
     if (resendIn === 0) {
@@ -118,10 +128,9 @@ export function LoginScreen({ onComplete }: LoginScreenProps) {
             <MaterialCommunityIcons color={colors.white} name="shopping" size={28} />
           </View>
           <Text style={styles.brand}>Bazzato</Text>
-          <Text style={styles.title}>Groceries in minutes</Text>
+          <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>
-            Sign in to discover nearby shops, daily essentials, COD checkout,
-            and fast order tracking.
+            Sign in with the mobile number registered during onboarding.
           </Text>
         </View>
 
@@ -149,16 +158,19 @@ export function LoginScreen({ onComplete }: LoginScreenProps) {
 
         {!keycloakEnabled && step === "phone" ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Mobile number</Text>
+            <Text style={styles.label}>
+              {lockPhone ? "Registered mobile number" : "Mobile number"}
+            </Text>
             <View style={styles.phoneField}>
               <Text style={styles.countryCode}>+91</Text>
               <TextInput
+                editable={!lockPhone}
                 keyboardType="phone-pad"
                 maxLength={10}
                 onChangeText={setPhone}
                 placeholder="98765 43210"
                 placeholderTextColor={colors.placeholder}
-                style={styles.input}
+                style={[styles.input, lockPhone && styles.lockedInput]}
                 value={phone}
               />
             </View>
@@ -176,7 +188,7 @@ export function LoginScreen({ onComplete }: LoginScreenProps) {
             </Pressable>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <Text style={styles.helpText}>
-              We will send a 4-digit code to verify this number.
+              We will send a 4-digit code to your onboarded mobile number.
             </Text>
           </View>
         ) : null}
@@ -188,9 +200,11 @@ export function LoginScreen({ onComplete }: LoginScreenProps) {
                 <Text style={styles.label}>Enter OTP</Text>
                 <Text style={styles.mutedText}>Sent to +91 {phoneDigits}</Text>
               </View>
-              <Pressable onPress={() => setStep("phone")}>
-                <Text style={styles.linkText}>Edit</Text>
-              </Pressable>
+              {!lockPhone ? (
+                <Pressable onPress={() => setStep("phone")}>
+                  <Text style={styles.linkText}>Edit</Text>
+                </Pressable>
+              ) : null}
             </View>
             <TextInput
               keyboardType="number-pad"
@@ -307,6 +321,9 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 16,
     fontWeight: "700"
+  },
+  lockedInput: {
+    color: colors.muted
   },
   otpInput: {
     height: 62,

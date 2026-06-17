@@ -10,6 +10,7 @@ type ProfileScreenProps = {
   order: Order | null;
   orderCount: number;
   customerName?: string;
+  customerEmail?: string;
   phone?: string;
   deliveryAddress: string;
   onHome: () => void;
@@ -22,6 +23,7 @@ export function ProfileScreen({
   order,
   orderCount,
   customerName,
+  customerEmail,
   phone,
   deliveryAddress,
   onHome,
@@ -75,6 +77,12 @@ export function ProfileScreen({
           <View style={styles.row}>
             <MaterialCommunityIcons color={colors.green} name="shield-check-outline" size={20} />
             <Text style={styles.rowText}>Phone verified</Text>
+          </View>
+          <View style={styles.row}>
+            <MaterialCommunityIcons color={colors.green} name="email-outline" size={20} />
+            <Text style={styles.rowText}>
+              {customerEmail ?? "Email not registered"}
+            </Text>
           </View>
           <View style={styles.row}>
             <MaterialCommunityIcons color={colors.green} name="cash" size={20} />

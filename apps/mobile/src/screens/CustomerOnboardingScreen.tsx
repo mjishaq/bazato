@@ -15,7 +15,9 @@ import { colors } from "../theme/colors";
 
 export type CustomerOnboardingProfile = {
   address: string;
+  email: string;
   name: string;
+  phone: string;
   preference: string;
 };
 
@@ -29,12 +31,20 @@ export function CustomerOnboardingScreen({
   onComplete
 }: CustomerOnboardingScreenProps) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [preference, setPreference] = useState(preferences[0]);
+  const phoneDigits = useMemo(() => phone.replace(/\D/g, ""), [phone]);
+  const emailValid = useMemo(() => /\S+@\S+\.\S+/.test(email.trim()), [email]);
 
   const canContinue = useMemo(
-    () => name.trim().length >= 2 && address.trim().length >= 8,
-    [address, name]
+    () =>
+      name.trim().length >= 2 &&
+      emailValid &&
+      phoneDigits.length >= 10 &&
+      address.trim().length >= 8,
+    [address, emailValid, name, phoneDigits]
   );
 
   return (
@@ -59,8 +69,8 @@ export function CustomerOnboardingScreen({
           </View>
           <Text style={styles.title}>Set up your nearby shopping profile</Text>
           <Text style={styles.subtitle}>
-            Save your delivery area once and Bazzato will use it during checkout
-            and order tracking.
+            Register your details once. We will use this mobile number for OTP
+            login and this address during checkout.
           </Text>
         </View>
 
@@ -74,6 +84,31 @@ export function CustomerOnboardingScreen({
             style={styles.input}
             value={name}
           />
+
+          <Label text="Email address" />
+          <TextInput
+            autoCapitalize="none"
+            keyboardType="email-address"
+            onChangeText={setEmail}
+            placeholder="name@example.com"
+            placeholderTextColor={colors.placeholder}
+            style={styles.input}
+            value={email}
+          />
+
+          <Label text="Mobile number for OTP login" />
+          <View style={styles.phoneField}>
+            <Text style={styles.countryCode}>+91</Text>
+            <TextInput
+              keyboardType="phone-pad"
+              maxLength={10}
+              onChangeText={setPhone}
+              placeholder="98765 43210"
+              placeholderTextColor={colors.placeholder}
+              style={styles.phoneInput}
+              value={phone}
+            />
+          </View>
 
           <Label text="Default delivery address" />
           <TextInput
@@ -115,7 +150,9 @@ export function CustomerOnboardingScreen({
             onPress={() =>
               onComplete({
                 address: address.trim(),
+                email: email.trim().toLowerCase(),
                 name: name.trim(),
+                phone: phoneDigits,
                 preference
               })
             }
@@ -209,6 +246,30 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     paddingHorizontal: 13,
     marginBottom: 14
+  },
+  phoneField: {
+    height: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 8,
+    backgroundColor: colors.panel,
+    marginBottom: 14,
+    overflow: "hidden"
+  },
+  countryCode: {
+    paddingHorizontal: 13,
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  phoneInput: {
+    flex: 1,
+    height: "100%",
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "800"
   },
   addressInput: {
     minHeight: 92,
