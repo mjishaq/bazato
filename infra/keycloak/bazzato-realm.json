@@ -44,7 +44,8 @@
       "redirectUris": [
         "bazzato://*",
         "exp://*",
-        "http://localhost:8081/*"
+        "http://localhost:8081/*",
+        "https://*.up.railway.app/*"
       ],
       "webOrigins": [
         "*"
