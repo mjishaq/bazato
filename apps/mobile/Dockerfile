@@ -13,7 +13,7 @@ ENV EXPO_PUBLIC_APP_NAME=$EXPO_PUBLIC_APP_NAME
 ENV EXPO_PUBLIC_DEFAULT_SHOP_ID=$EXPO_PUBLIC_DEFAULT_SHOP_ID
 
 COPY package.json ./
-RUN npm install
+RUN npm install && npx expo install expo-asset expo-font
 
 COPY . .
 RUN npm run build
