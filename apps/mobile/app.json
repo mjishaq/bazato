@@ -23,7 +23,8 @@
     },
     "plugins": [
       "expo-location",
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ]
   }
 }
