@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 
 type Product = {
   id: string;
@@ -467,10 +474,11 @@ export default function VendorHome() {
             </button>
           </div>
 
+          <AutoHeight>
           {error ? <div className="errorBanner">{error}</div> : null}
 
           {view === "adminLogin" ? (
-            <form className="authForm" onSubmit={loginAdmin}>
+            <form className="authForm" key="adminLogin" onSubmit={loginAdmin}>
               <label>
                 Admin mobile number
                 <input
@@ -486,7 +494,7 @@ export default function VendorHome() {
               </button>
             </form>
           ) : view === "login" ? (
-            <form className="authForm" onSubmit={loginVendor}>
+            <form className="authForm" key="login" onSubmit={loginVendor}>
               <label>
                 Registered mobile number
                 <input
@@ -502,7 +510,7 @@ export default function VendorHome() {
               </button>
             </form>
           ) : (
-            <form className="authForm" onSubmit={onboardVendor}>
+            <form className="authForm" key="onboarding" onSubmit={onboardVendor}>
               <label>
                 Shop name
                 <input
@@ -568,6 +576,7 @@ export default function VendorHome() {
               </button>
             </form>
           )}
+          </AutoHeight>
         </section>
       </main>
     );
@@ -827,6 +836,32 @@ export default function VendorHome() {
         )}
       </section>
     </main>
+  );
+}
+
+function AutoHeight({ children }: { children: ReactNode }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | "auto">("auto");
+
+  useEffect(() => {
+    const el = innerRef.current;
+    if (!el) {
+      return;
+    }
+
+    const update = () => setHeight(el.offsetHeight);
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="autoHeight" style={{ height }}>
+      <div ref={innerRef}>{children}</div>
+    </div>
   );
 }
 
