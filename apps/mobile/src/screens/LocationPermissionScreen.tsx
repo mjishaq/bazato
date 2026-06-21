@@ -1,9 +1,12 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
+import { Button, IconButton, Screen } from "../components/ui";
+import { illustrations } from "../theme/assets";
 import { colors } from "../theme/colors";
+import { fonts, radius } from "../theme/typography";
 
 type PermissionState = "idle" | "requesting" | "granted" | "denied" | "demo";
 
@@ -23,13 +26,13 @@ export function LocationPermissionScreen({
 
   const requestLocation = async () => {
     setPermissionState("requesting");
-    setMessage("Opening your device permission prompt...");
+    setMessage("Opening your device permission prompt…");
 
     const result = await Location.requestForegroundPermissionsAsync();
 
     if (result.status === Location.PermissionStatus.GRANTED) {
       setPermissionState("granted");
-      setMessage("Location access is on. Nearby shops will appear on the home map next.");
+      setMessage("Location access is on. Nearby shops will appear next.");
       onContinue();
       return;
     }
@@ -46,330 +49,178 @@ export function LocationPermissionScreen({
   };
 
   const isBusy = permissionState === "requesting";
-  const canContinue = permissionState === "granted" || permissionState === "demo";
+  const ready = permissionState === "granted" || permissionState === "demo";
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Back</Text>
-          </Pressable>
-          <Text style={styles.stepText}>C02</Text>
+    <Screen scroll contentStyle={styles.content}>
+      <View style={styles.header}>
+        <IconButton icon="chevron-left" onPress={onBack} />
+        <Text style={styles.step}>Step 2 of 2</Text>
+      </View>
+
+      <View style={styles.mapCard}>
+        <Image resizeMode="contain" source={illustrations.pins} style={styles.mapArt} />
+        <View style={styles.radiusBadge}>
+          <MaterialCommunityIcons color={colors.onPrimary} name="target" size={13} />
+          <Text style={styles.radiusBadgeText}>100m pilot radius</Text>
+        </View>
+      </View>
+
+      <Text style={styles.brand}>BAZZATO</Text>
+      <Text style={styles.title}>Find stores close to you</Text>
+      <Text style={styles.subtitle}>
+        Share location access so we can show shops, distance, delivery radius, and faster
+        COD options around you.
+      </Text>
+
+      <View style={styles.card}>
+        <View style={styles.statusRow}>
+          <View style={styles.statusIcon}>
+            <MaterialCommunityIcons color={colors.primaryDark} name="map-marker-radius" size={22} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statusTitle}>
+              {ready ? "Location ready" : "Location permission"}
+            </Text>
+            <Text style={styles.statusText}>{message}</Text>
+          </View>
         </View>
 
-        <View style={styles.mapPreview}>
-          <View style={styles.radius} />
-          <View style={styles.userDot} />
-          <View style={[styles.pin, styles.pinOne]} />
-          <View style={[styles.pin, styles.pinTwo]} />
-          <View style={[styles.pin, styles.pinThree]} />
-          <Text style={styles.mapBadge}>100m pilot radius</Text>
-        </View>
+        <Button
+          disabled={isBusy}
+          icon="crosshairs-gps"
+          label={isBusy ? "Requesting…" : "Allow location access"}
+          onPress={requestLocation}
+          style={{ marginBottom: 10 }}
+        />
+        <Button label="Continue with demo area" onPress={useDemoArea} variant="ghost" />
 
-        <View style={styles.content}>
-          <Text style={styles.brand}>Bazzato</Text>
-          <Text style={styles.title}>Find stores close to you</Text>
-          <Text style={styles.subtitle}>
-            Share location access so we can show shops, distance, delivery
-            radius, and faster COD order options around you.
+        <View style={styles.tip}>
+          <MaterialCommunityIcons color={colors.muted} name="information-outline" size={15} />
+          <Text style={styles.tipText}>
+            For Expo Go and simulators, the demo area skips device permissions.
           </Text>
         </View>
-
-        <View style={styles.card}>
-          <View style={styles.statusRow}>
-            <View style={styles.statusIcon}>
-              <MaterialCommunityIcons
-                color={colors.orange}
-                name="map-marker-radius"
-                size={24}
-              />
-            </View>
-            <View style={styles.statusCopy}>
-              <Text style={styles.statusTitle}>
-                {canContinue ? "Location ready" : "Location permission"}
-              </Text>
-              <Text style={styles.statusText}>{message}</Text>
-            </View>
-          </View>
-
-          <Pressable
-            disabled={isBusy}
-            onPress={requestLocation}
-            style={[styles.primaryButton, isBusy && styles.disabledButton]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {isBusy ? "Requesting..." : "Allow location access"}
-            </Text>
-          </Pressable>
-
-          <Pressable onPress={useDemoArea} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Use demo area</Text>
-          </Pressable>
-
-          <View style={styles.tipBox}>
-            <Text style={styles.tipText}>
-              For Expo Go and simulator testing, tap Continue with demo area.
-              It takes you directly to nearby shops.
-            </Text>
-          </View>
-
-          <View style={styles.nextHint}>
-            <Text style={styles.nextHintText}>
-              Tap either button to continue. Demo area skips device permissions.
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      <View style={styles.bottomBar}>
-        <Pressable onPress={useDemoArea} style={styles.nextButton}>
-          <Text style={styles.nextButtonText}>Continue with demo area</Text>
-        </Pressable>
       </View>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 112
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 40
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 8,
-    marginBottom: 18
+    marginBottom: 14
   },
-  backButton: {
-    minHeight: 36,
-    justifyContent: "center"
-  },
-  backButtonText: {
-    color: colors.green,
-    fontSize: 14,
-    fontWeight: "900"
-  },
-  stepText: {
+  step: {
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900"
+    fontFamily: fonts.bold,
+    fontSize: 12.5
   },
-  mapPreview: {
-    height: 210,
+  mapCard: {
+    height: 220,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: colors.lineDark,
-    borderRadius: 24,
-    backgroundColor: colors.orangeSoft,
+    borderColor: colors.primaryGlow,
     overflow: "hidden",
-    marginBottom: 26
+    marginBottom: 24
   },
-  radius: {
+  mapArt: {
+    width: "70%",
+    height: "78%"
+  },
+  radiusBadge: {
     position: "absolute",
-    left: 70,
-    right: 70,
-    top: 42,
-    bottom: 42,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: colors.green,
-    borderRadius: 1000,
-    backgroundColor: "rgba(22, 131, 75, 0.1)"
-  },
-  userDot: {
-    position: "absolute",
-    left: "50%",
-    top: "50%",
-    width: 18,
-    height: 18,
-    marginLeft: -9,
-    marginTop: -9,
-    borderWidth: 3,
-    borderColor: colors.white,
-    borderRadius: 9,
-    backgroundColor: colors.blue
-  },
-  pin: {
-    position: "absolute",
-    width: 20,
-    height: 20,
-    borderWidth: 3,
-    borderColor: colors.white,
-    borderRadius: 10,
-    backgroundColor: colors.magenta
-  },
-  pinOne: {
-    left: 82,
-    top: 62
-  },
-  pinTwo: {
-    right: 74,
-    top: 96
-  },
-  pinThree: {
-    left: 128,
-    bottom: 58
-  },
-  mapBadge: {
-    position: "absolute",
-    left: 14,
     bottom: 14,
+    left: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    overflow: "hidden",
-    backgroundColor: colors.white,
-    color: colors.orange,
-    fontSize: 11,
-    fontWeight: "900"
+    paddingVertical: 7
   },
-  content: {
-    marginBottom: 22
+  radiusBadgeText: {
+    color: colors.onPrimary,
+    fontFamily: fonts.extrabold,
+    fontSize: 11
   },
   brand: {
-    color: colors.orange,
-    fontSize: 14,
-    fontWeight: "900",
+    color: colors.primaryDark,
+    fontFamily: fonts.extrabold,
+    fontSize: 13,
+    letterSpacing: 2,
     marginBottom: 8
   },
   title: {
     color: colors.ink,
-    fontSize: 36,
-    fontWeight: "900",
-    lineHeight: 40,
-    marginBottom: 12
+    fontFamily: fonts.extrabold,
+    fontSize: 32,
+    lineHeight: 36,
+    marginBottom: 10
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 15,
-    lineHeight: 23
+    fontFamily: fonts.medium,
+    fontSize: 14.5,
+    lineHeight: 22,
+    marginBottom: 22
   },
   card: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 22,
-    backgroundColor: colors.white,
-    padding: 18,
-    shadowColor: "#1e2a24",
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.12,
-    shadowRadius: 34,
-    elevation: 5
+    padding: 18
   },
   statusRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 16
+    marginBottom: 18
   },
   statusIcon: {
     width: 44,
     height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 14,
-    backgroundColor: colors.orangeSoft
-  },
-  statusCopy: {
-    flex: 1
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft
   },
   statusTitle: {
     color: colors.ink,
-    fontSize: 14,
-    fontWeight: "900",
+    fontFamily: fonts.extrabold,
+    fontSize: 15,
     marginBottom: 3
   },
   statusText: {
     color: colors.muted,
-    fontSize: 12,
+    fontFamily: fonts.medium,
+    fontSize: 12.5,
     lineHeight: 18
   },
-  primaryButton: {
-    height: 50,
+  tip: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-    backgroundColor: colors.green,
-    marginBottom: 10
-  },
-  disabledButton: {
-    backgroundColor: "#a9b5aa"
-  },
-  primaryButtonText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: "900"
-  },
-  secondaryButton: {
-    height: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 16,
-    backgroundColor: colors.white
-  },
-  secondaryButtonText: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: "900"
-  },
-  tipBox: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 16,
-    backgroundColor: colors.panel,
+    gap: 8,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
     padding: 12,
-    marginTop: 12
+    marginTop: 14
   },
   tipText: {
+    flex: 1,
     color: colors.muted,
+    fontFamily: fonts.medium,
     fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "700"
-  },
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.white,
-    padding: 16
-  },
-  nextButton: {
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-    backgroundColor: colors.green
-  },
-  nextButtonText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: "900"
-  },
-  nextHint: {
-    borderWidth: 1,
-    borderColor: "#cfdaff",
-    borderRadius: 16,
-    backgroundColor: colors.blueSoft,
-    padding: 12,
-    marginTop: 12
-  },
-  nextHintText: {
-    color: "#23438b",
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "700"
+    lineHeight: 17
   }
 });

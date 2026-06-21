@@ -1,8 +1,10 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { Screen, Tag } from "../components/ui";
 import { colors } from "../theme/colors";
+import { fonts, radius, shadow } from "../theme/typography";
 import type { Order } from "../types/cart";
 import { formatMoney } from "../utils/cart";
 
@@ -31,174 +33,259 @@ export function ProfileScreen({
   onOrders,
   onSearch
 }: ProfileScreenProps) {
-  return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.avatar}>
-            <MaterialCommunityIcons color={colors.orange} name="account" size={34} />
-          </View>
-          <View>
-            <Text style={styles.eyebrow}>Profile</Text>
-            <Text style={styles.title}>{customerName ?? "Bazzato customer"}</Text>
-            <Text style={styles.phoneText}>{phone ? `+91 ${phone}` : "Phone not linked"}</Text>
-          </View>
-        </View>
+  const initial = (customerName ?? "B").trim().charAt(0).toUpperCase();
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Latest order</Text>
-          {order ? (
-            <>
+  return (
+    <Screen
+      scroll
+      contentStyle={styles.content}
+      overlay={
+        <BottomNav
+          activeTab="profile"
+          onHome={onHome}
+          onOrders={onOrders}
+          onProfile={() => undefined}
+          onSearch={onSearch}
+        />
+      }
+    >
+      <View style={styles.profileCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initial}</Text>
+        </View>
+        <Text style={styles.name}>{customerName ?? "Bazzato customer"}</Text>
+        <Text style={styles.phone}>{phone ? `+91 ${phone}` : "Phone not linked"}</Text>
+        <View style={styles.verifiedRow}>
+          <MaterialCommunityIcons color={colors.success} name="shield-check" size={15} />
+          <Text style={styles.verifiedText}>Phone verified</Text>
+        </View>
+      </View>
+
+      <View style={styles.statsRow}>
+        <Stat icon="receipt" value={String(orderCount)} label="Orders" />
+        <Stat icon="cash" value="COD" label="Payment" />
+        <Stat icon="map-marker" value="1" label="Address" />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Latest order</Text>
+        {order ? (
+          <View style={styles.latestRow}>
+            <View style={styles.latestIcon}>
+              <MaterialCommunityIcons color={colors.primaryDark} name="receipt" size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.orderId}>{order.id}</Text>
               <Text style={styles.meta}>
-                {order.lines.length} items - {formatMoney(order.total)} - {order.status}
+                {order.lines.length} items · {formatMoney(order.total)}
               </Text>
-            </>
-          ) : (
-            <Text style={styles.meta}>No order placed yet.</Text>
-          )}
-        </View>
+            </View>
+            <Tag label={order.status} tone="primary" />
+          </View>
+        ) : (
+          <Text style={styles.meta}>No order placed yet.</Text>
+        )}
+      </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Delivery address</Text>
-          <View style={styles.row}>
-            <MaterialCommunityIcons color={colors.orange} name="map-marker-radius" size={20} />
-            <Text style={styles.rowText}>
-              {deliveryAddress || "No saved delivery address yet"}
-            </Text>
-          </View>
-          <Text style={styles.meta}>
-            Address book will store home, work, and saved delivery locations.
-          </Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Delivery address</Text>
+        <View style={styles.row}>
+          <MaterialCommunityIcons color={colors.primaryDark} name="map-marker" size={20} />
+          <Text style={styles.rowText}>{deliveryAddress || "No saved delivery address yet"}</Text>
         </View>
+      </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Account</Text>
-          <View style={styles.row}>
-            <MaterialCommunityIcons color={colors.green} name="shield-check-outline" size={20} />
-            <Text style={styles.rowText}>Phone verified</Text>
-          </View>
-          <View style={styles.row}>
-            <MaterialCommunityIcons color={colors.green} name="email-outline" size={20} />
-            <Text style={styles.rowText}>
-              {customerEmail ?? "Email not registered"}
-            </Text>
-          </View>
-          <View style={styles.row}>
-            <MaterialCommunityIcons color={colors.green} name="cash" size={20} />
-            <Text style={styles.rowText}>Cash on delivery enabled</Text>
-          </View>
-          <View style={styles.row}>
-            <MaterialCommunityIcons color={colors.green} name="history" size={20} />
-            <Text style={styles.rowText}>{orderCount} saved orders</Text>
-          </View>
-          <Pressable onPress={onLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Account</Text>
+        <AccountRow icon="email" text={customerEmail ?? "Email not registered"} />
+        <AccountRow icon="cash-multiple" text="Cash on delivery enabled" />
+        <AccountRow icon="history" text={`${orderCount} saved orders`} />
+      </View>
 
-      <BottomNav
-        activeTab="profile"
-        onHome={onHome}
-        onOrders={onOrders}
-        onProfile={() => undefined}
-        onSearch={onSearch}
-      />
+      <Pressable onPress={onLogout} style={styles.logout}>
+        <MaterialCommunityIcons color={colors.danger} name="logout" size={18} />
+        <Text style={styles.logoutText}>Logout</Text>
+      </Pressable>
+    </Screen>
+  );
+}
+
+function Stat({
+  icon,
+  value,
+  label
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  value: string;
+  label: string;
+}) {
+  return (
+    <View style={styles.stat}>
+      <MaterialCommunityIcons color={colors.primaryDark} name={icon} size={20} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function AccountRow({
+  icon,
+  text
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  text: string;
+}) {
+  return (
+    <View style={styles.row}>
+      <MaterialCommunityIcons color={colors.inkSoft} name={icon} size={19} />
+      <Text style={styles.rowText}>{text}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
   content: {
-    padding: 20,
-    paddingBottom: 96
+    paddingHorizontal: 20,
+    paddingBottom: 120
   },
-  header: {
-    flexDirection: "row",
+  profileCard: {
     alignItems: "center",
-    gap: 14,
-    paddingTop: 8,
-    marginBottom: 18
+    borderRadius: radius.lg,
+    backgroundColor: colors.ink,
+    padding: 24,
+    marginBottom: 14
   },
   avatar: {
-    width: 58,
-    height: 58,
+    width: 78,
+    height: 78,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 18,
-    backgroundColor: colors.orangeSoft
+    borderRadius: 39,
+    backgroundColor: colors.primary,
+    marginBottom: 12
   },
-  eyebrow: {
-    color: colors.orange,
-    fontSize: 12,
-    fontWeight: "900",
-    marginBottom: 4
+  avatarText: {
+    color: colors.onPrimary,
+    fontFamily: fonts.extrabold,
+    fontSize: 32
   },
-  title: {
-    color: colors.ink,
-    fontSize: 20,
-    fontWeight: "900"
+  name: {
+    color: colors.white,
+    fontFamily: fonts.extrabold,
+    fontSize: 21
   },
-  phoneText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
+  phone: {
+    color: "rgba(255,255,255,0.6)",
+    fontFamily: fonts.semibold,
+    fontSize: 13,
     marginTop: 3
   },
-  card: {
+  verifiedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 12
+  },
+  verifiedText: {
+    color: colors.white,
+    fontFamily: fonts.bold,
+    fontSize: 12
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14
+  },
+  stat: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.white,
+    paddingVertical: 16
+  },
+  statValue: {
+    color: colors.ink,
+    fontFamily: fonts.extrabold,
+    fontSize: 17,
+    marginTop: 2
+  },
+  statLabel: {
+    color: colors.muted,
+    fontFamily: fonts.semibold,
+    fontSize: 11.5
+  },
+  card: {
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
     padding: 16,
-    marginBottom: 12
+    marginBottom: 12,
+    ...shadow.card
   },
   cardTitle: {
     color: colors.ink,
-    fontSize: 16,
-    fontWeight: "900",
-    marginBottom: 10
+    fontFamily: fonts.extrabold,
+    fontSize: 15,
+    marginBottom: 12
+  },
+  latestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  latestIcon: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft
   },
   orderId: {
-    color: colors.green,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 4
+    color: colors.ink,
+    fontFamily: fonts.extrabold,
+    fontSize: 15
   },
   meta: {
     color: colors.muted,
+    fontFamily: fonts.semibold,
     fontSize: 13,
-    fontWeight: "700"
+    marginTop: 2
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 8
+    paddingVertical: 7
   },
   rowText: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: "800"
+    flex: 1,
+    color: colors.inkSoft,
+    fontFamily: fonts.semibold,
+    fontSize: 14
   },
-  logoutButton: {
-    height: 44,
+  logout: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.dangerSoft,
     borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.orangeSoft,
-    marginTop: 12
+    borderColor: colors.dangerSoft
   },
   logoutText: {
-    color: colors.green,
-    fontSize: 13,
-    fontWeight: "900"
+    color: colors.danger,
+    fontFamily: fonts.bold,
+    fontSize: 14.5
   }
 });

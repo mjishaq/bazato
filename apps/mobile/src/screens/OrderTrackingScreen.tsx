@@ -1,10 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { Button, IconButton, Screen } from "../components/ui";
 import { subscribeToOrder } from "../api/orders";
+import { illustrations } from "../theme/assets";
 import { colors } from "../theme/colors";
+import { fonts, radius, shadow } from "../theme/typography";
 import type { Order } from "../types/cart";
 import { formatMoney } from "../utils/cart";
 
@@ -20,11 +23,11 @@ type OrderTrackingScreenProps = {
 };
 
 const steps = [
-  "Placed",
-  "Accepted",
-  "Preparing",
-  "Ready",
-  "Completed"
+  { label: "Placed", note: "Order received by the shop." },
+  { label: "Accepted", note: "Shop confirmed item availability." },
+  { label: "Preparing", note: "Items are being packed." },
+  { label: "Ready", note: "Packed and ready to head out." },
+  { label: "Completed", note: "Delivered — enjoy!" }
 ];
 
 export function OrderTrackingScreen({
@@ -42,7 +45,7 @@ export function OrderTrackingScreen({
   const statusText = order?.status ?? "placed";
   const activeStatusIndex = order
     ? Math.max(
-        steps.findIndex((step) => step.toLowerCase() === order.status),
+        steps.findIndex((step) => step.label.toLowerCase() === order.status),
         order.status === "completed" ? steps.length - 1 : 0
       )
     : -1;
@@ -51,7 +54,6 @@ export function OrderTrackingScreen({
     if (!order) {
       return;
     }
-
     const unsubscribe = subscribeToOrder({
       fallbackLines: order.lines,
       onOrder: onOrderUpdate,
@@ -61,7 +63,6 @@ export function OrderTrackingScreen({
     const timer = setInterval(() => {
       void onRefresh();
     }, 15000);
-
     return () => {
       unsubscribe();
       clearInterval(timer);
@@ -69,232 +70,208 @@ export function OrderTrackingScreen({
   }, [onOrderUpdate, onRefresh, order?.id, token]);
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>Order tracking</Text>
-            <Text style={styles.title}>{order ? `Order ${order.id}` : "No active order"}</Text>
-          </View>
-          <Pressable onPress={onRefresh} style={styles.homeButton}>
-            <MaterialCommunityIcons color={colors.green} name="refresh" size={18} />
-          </Pressable>
-        </View>
-
-        <View style={styles.timerCard}>
-          <View style={styles.timerCircle}>
-            <MaterialCommunityIcons color={colors.orange} name="bike-fast" size={34} />
-          </View>
-          <Text style={styles.timerValue}>{statusText}</Text>
-          <Text style={styles.timerTitle}>{shopName} is handling your order</Text>
-          <Text style={styles.timerText}>
-            {itemCount} items - COD {order ? formatMoney(order.total) : formatMoney(0)}
+    <Screen
+      scroll
+      contentStyle={styles.content}
+      overlay={
+        <BottomNav
+          activeTab="orders"
+          onHome={onHome}
+          onOrders={() => undefined}
+          onProfile={onProfile}
+          onSearch={onSearch}
+        />
+      }
+    >
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.eyebrow}>ORDER TRACKING</Text>
+          <Text numberOfLines={1} style={styles.title}>
+            {order ? `Order ${order.id}` : "No active order"}
           </Text>
         </View>
+        <IconButton icon="refresh" onPress={() => void onRefresh()} />
+      </View>
 
-        <View style={styles.timelineCard}>
-          {steps.map((step, index) => {
-            const done = index <= activeStatusIndex;
-            return (
-              <View key={step} style={styles.timelineRow}>
+      <View style={styles.statusCard}>
+        <Image resizeMode="contain" source={illustrations.rider} style={styles.statusArt} />
+        <Text style={styles.statusBadge}>{String(statusText).toUpperCase()}</Text>
+        <Text style={styles.statusTitle}>{shopName} is on it</Text>
+        <Text style={styles.statusMeta}>
+          {itemCount} items · COD {order ? formatMoney(order.total) : formatMoney(0)}
+        </Text>
+      </View>
+
+      <View style={styles.timeline}>
+        {steps.map((step, index) => {
+          const done = index <= activeStatusIndex;
+          const isLast = index === steps.length - 1;
+          return (
+            <View key={step.label} style={styles.timelineRow}>
+              <View style={styles.timelineRail}>
                 <View style={[styles.tick, done && styles.tickDone]}>
                   {done ? (
-                    <MaterialCommunityIcons color={colors.white} name="check" size={13} />
+                    <MaterialCommunityIcons color={colors.onPrimary} name="check" size={14} />
                   ) : (
                     <Text style={styles.tickText}>{index + 1}</Text>
                   )}
                 </View>
-                <View style={styles.timelineCopy}>
-                  <Text style={styles.timelineTitle}>{step}</Text>
-                  <Text style={styles.timelineText}>
-                    {index === 0
-                      ? "Order received by shop."
-                      : index === 1
-                        ? "Shop confirmed item availability."
-                        : index === 2
-                          ? "Items are being packed."
-                          : "Pending update."}
-                  </Text>
-                </View>
+                {!isLast ? <View style={[styles.connector, done && styles.connectorDone]} /> : null}
               </View>
-            );
-          })}
-        </View>
+              <View style={styles.timelineCopy}>
+                <Text style={[styles.timelineTitle, !done && { color: colors.muted }]}>
+                  {step.label}
+                </Text>
+                <Text style={styles.timelineNote}>{step.note}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
 
-        <View style={styles.profileCard}>
-          <Text style={styles.profileTitle}>Profile and order history</Text>
-          <Text style={styles.profileText}>
-            Reorder from previous purchases and track COD orders from one place.
-          </Text>
-          <Pressable onPress={onReorder} style={styles.reorderButton}>
-            <Text style={styles.reorderButtonText}>Reorder essentials</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-
-      <BottomNav
-        activeTab="orders"
-        onHome={onHome}
-        onOrders={() => undefined}
-        onProfile={onProfile}
-        onSearch={onSearch}
-      />
-    </View>
+      <View style={styles.reorderCard}>
+        <Text style={styles.reorderTitle}>Need it again?</Text>
+        <Text style={styles.reorderText}>
+          Reorder essentials and track every COD order from one place.
+        </Text>
+        <Button icon="reload" label="Reorder essentials" onPress={onReorder} variant="dark" />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
   content: {
-    padding: 20,
-    paddingBottom: 96
+    paddingHorizontal: 20,
+    paddingBottom: 120
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 8,
-    marginBottom: 16
+    gap: 12,
+    marginBottom: 18
   },
   eyebrow: {
-    color: colors.green,
-    fontSize: 12,
-    fontWeight: "900",
+    color: colors.primaryDark,
+    fontFamily: fonts.extrabold,
+    fontSize: 11,
+    letterSpacing: 1.2,
     marginBottom: 3
   },
   title: {
     color: colors.ink,
+    fontFamily: fonts.extrabold,
+    fontSize: 24
+  },
+  statusCard: {
+    alignItems: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    padding: 22,
+    marginBottom: 16,
+    ...shadow.yellow
+  },
+  statusArt: {
+    width: 132,
+    height: 132,
+    marginBottom: 6
+  },
+  statusBadge: {
+    color: colors.onPrimary,
+    fontFamily: fonts.extrabold,
     fontSize: 24,
-    fontWeight: "900"
+    letterSpacing: 1
   },
-  homeButton: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.orangeSoft,
-    paddingHorizontal: 13,
-    paddingVertical: 10
-  },
-  homeButtonText: {
-    color: colors.green,
-    fontSize: 12,
-    fontWeight: "900"
-  },
-  timerCard: {
-    alignItems: "center",
-    borderRadius: 8,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 20,
-    marginBottom: 12
-  },
-  timerCircle: {
-    width: 92,
-    height: 92,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 0,
-    backgroundColor: colors.white,
-    borderRadius: 46,
-    marginBottom: 14
-  },
-  timerValue: {
+  statusTitle: {
     color: colors.ink,
-    fontSize: 28,
-    fontWeight: "900"
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    marginTop: 4
   },
-  timerTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "900",
-    textAlign: "center"
+  statusMeta: {
+    color: "rgba(22,19,13,0.66)",
+    fontFamily: fonts.semibold,
+    fontSize: 12.5,
+    marginTop: 4
   },
-  timerText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    marginTop: 5
-  },
-  timelineCard: {
+  timeline: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 22,
-    backgroundColor: colors.white,
-    padding: 14,
-    marginBottom: 12
+    padding: 18,
+    marginBottom: 16
   },
   timelineRow: {
     flexDirection: "row",
-    gap: 12,
-    paddingVertical: 10
+    gap: 14
+  },
+  timelineRail: {
+    alignItems: "center",
+    width: 28
   },
   tick: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.lineDark,
-    borderRadius: 13,
-    backgroundColor: colors.white
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surface
   },
   tickDone: {
-    borderColor: colors.green,
-    backgroundColor: colors.green
+    borderColor: colors.primary,
+    backgroundColor: colors.primary
   },
   tickText: {
     color: colors.muted,
-    fontSize: 10,
-    fontWeight: "900"
+    fontFamily: fonts.bold,
+    fontSize: 11
+  },
+  connector: {
+    flex: 1,
+    width: 2.5,
+    minHeight: 22,
+    backgroundColor: colors.line,
+    marginVertical: 2
+  },
+  connectorDone: {
+    backgroundColor: colors.primary
   },
   timelineCopy: {
-    flex: 1
+    flex: 1,
+    paddingBottom: 18
   },
   timelineTitle: {
     color: colors.ink,
-    fontSize: 14,
-    fontWeight: "900",
-    marginBottom: 2
+    fontFamily: fonts.extrabold,
+    fontSize: 15
   },
-  timelineText: {
+  timelineNote: {
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: "700"
+    fontFamily: fonts.medium,
+    fontSize: 12.5,
+    marginTop: 2
   },
-  profileCard: {
+  reorderCard: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.white,
-    padding: 16
+    padding: 18,
+    gap: 6
   },
-  profileTitle: {
+  reorderTitle: {
     color: colors.ink,
-    fontSize: 16,
-    fontWeight: "900",
-    marginBottom: 5
+    fontFamily: fonts.extrabold,
+    fontSize: 17
   },
-  profileText: {
+  reorderText: {
     color: colors.muted,
+    fontFamily: fonts.medium,
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: "700",
-    marginBottom: 14
-  },
-  reorderButton: {
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: colors.ink
-  },
-  reorderButtonText: {
-    color: colors.white,
-    fontSize: 13,
-    fontWeight: "900"
-  },
+    marginBottom: 8
+  }
 });

@@ -2,7 +2,9 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Product } from "../data/catalog";
+import { categoryImage } from "../theme/assets";
 import { colors } from "../theme/colors";
+import { fonts, radius, shadow } from "../theme/typography";
 import { formatMoney } from "../utils/cart";
 
 type ProductTileProps = {
@@ -22,47 +24,48 @@ export function ProductTile({
     product.mrp > product.price
       ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
       : 0;
-  const icon = getProductIcon(product.id);
 
   return (
     <View style={styles.card}>
       <View style={styles.imageBox}>
-        {discount > 0 ? <Text style={styles.discount}>{discount}% OFF</Text> : null}
-        {product.imageUrl ? (
-          <Image
-            resizeMode="contain"
-            source={{ uri: product.imageUrl }}
-            style={styles.productImage}
-          />
-        ) : (
-          <View style={styles.iconHalo}>
-            <MaterialCommunityIcons color={icon.color} name={icon.name} size={46} />
+        {discount > 0 ? (
+          <View style={styles.discount}>
+            <Text style={styles.discountText}>{discount}% OFF</Text>
           </View>
-        )}
+        ) : null}
+        <Image
+          resizeMode="contain"
+          source={product.imageUrl ? { uri: product.imageUrl } : categoryImage(product.category)}
+          style={styles.productImage}
+        />
       </View>
-      <Text numberOfLines={2} style={styles.name}>
+
+      <Text numberOfLines={1} style={styles.tag}>
+        {product.tag}
+      </Text>
+      <Text numberOfLines={1} style={styles.name}>
         {product.name}
       </Text>
       <Text style={styles.unit}>{product.unit}</Text>
-      <Text style={styles.tag}>{product.tag}</Text>
+
       <View style={styles.footer}>
         <View>
           <Text style={styles.price}>{formatMoney(product.price)}</Text>
-          <Text style={styles.mrp}>{formatMoney(product.mrp)}</Text>
+          {discount > 0 ? <Text style={styles.mrp}>{formatMoney(product.mrp)}</Text> : null}
         </View>
         {quantity > 0 ? (
           <View style={styles.qty}>
-            <Pressable onPress={() => onRemove(product.id)} style={styles.qtyButton}>
-              <Text style={styles.qtyText}>-</Text>
+            <Pressable hitSlop={6} onPress={() => onRemove(product.id)} style={styles.qtyButton}>
+              <MaterialCommunityIcons color={colors.white} name="minus" size={15} />
             </Pressable>
             <Text style={styles.qtyCount}>{quantity}</Text>
-            <Pressable onPress={() => onAdd(product.id)} style={styles.qtyButton}>
-              <Text style={styles.qtyText}>+</Text>
+            <Pressable hitSlop={6} onPress={() => onAdd(product.id)} style={styles.qtyButton}>
+              <MaterialCommunityIcons color={colors.white} name="plus" size={15} />
             </Pressable>
           </View>
         ) : (
           <Pressable onPress={() => onAdd(product.id)} style={styles.addButton}>
-            <Text style={styles.addText}>ADD</Text>
+            <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={22} />
           </Pressable>
         )}
       </View>
@@ -70,144 +73,111 @@ export function ProductTile({
   );
 }
 
-function getProductIcon(productId: string) {
-  const icons: Record<string, { name: keyof typeof MaterialCommunityIcons.glyphMap; color: string }> = {
-    apple: { name: "food-apple", color: "#d7382f" },
-    banana: { name: "fruit-cherries", color: "#e6a600" },
-    milk: { name: "bottle-soda-classic-outline", color: "#2f76c8" },
-    bread: { name: "bread-slice", color: "#b9782f" },
-    eggs: { name: "egg-outline", color: "#8b6f47" },
-    biscuits: { name: "cookie-outline", color: "#9d5f2c" },
-    chips: { name: "food-drumstick-outline", color: "#fc8019" },
-    curd: { name: "cup", color: "#2f76c8" }
-  };
-
-  return icons[productId] ?? { name: "shopping-outline", color: colors.green };
-}
-
 const styles = StyleSheet.create({
   card: {
     width: "48%",
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 18,
-    backgroundColor: colors.white,
-    padding: 10,
-    marginBottom: 12,
-    shadowColor: "#6b3410",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 3
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    padding: 11,
+    marginBottom: 14,
+    ...shadow.card
   },
   imageBox: {
-    height: 112,
+    height: 118,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 16,
-    backgroundColor: colors.orangeSoft,
-    marginBottom: 10,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    marginBottom: 11,
     overflow: "hidden"
   },
   discount: {
     position: "absolute",
-    left: 7,
-    top: 7,
-    overflow: "hidden",
-    borderRadius: 7,
-    backgroundColor: colors.magenta,
-    color: colors.white,
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-    fontSize: 9,
-    fontWeight: "900"
+    left: 8,
+    top: 8,
+    zIndex: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
+    paddingHorizontal: 8,
+    paddingVertical: 4
   },
-  iconHalo: {
-    width: 76,
-    height: 76,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 38,
-    backgroundColor: colors.white
+  discountText: {
+    color: colors.primary,
+    fontFamily: fonts.extrabold,
+    fontSize: 9.5,
+    letterSpacing: 0.3
   },
   productImage: {
-    width: "88%",
-    height: "88%"
+    width: "82%",
+    height: "82%"
+  },
+  tag: {
+    color: colors.primaryDark,
+    fontFamily: fonts.extrabold,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    marginBottom: 3
   },
   name: {
-    minHeight: 36,
     color: colors.ink,
-    fontSize: 13,
-    fontWeight: "900",
-    lineHeight: 18
+    fontFamily: fonts.bold,
+    fontSize: 15
   },
   unit: {
     color: colors.muted,
-    fontSize: 11,
-    fontWeight: "700",
+    fontFamily: fonts.medium,
+    fontSize: 11.5,
     marginTop: 2
-  },
-  tag: {
-    color: colors.orange,
-    fontSize: 10,
-    fontWeight: "900",
-    marginTop: 6
   },
   footer: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    marginTop: 9
+    marginTop: 11
   },
   price: {
     color: colors.ink,
-    fontSize: 13,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 15
   },
   mrp: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: "700",
-    textDecorationLine: "line-through"
+    color: colors.faint,
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    textDecorationLine: "line-through",
+    marginTop: 1
   },
   addButton: {
-    minWidth: 58,
-    height: 32,
+    width: 38,
+    height: 38,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.green,
-    borderRadius: 10,
-    backgroundColor: colors.white
-  },
-  addText: {
-    color: colors.green,
-    fontSize: 12,
-    fontWeight: "900"
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    ...shadow.yellow
   },
   qty: {
-    height: 32,
+    height: 38,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 8,
-    backgroundColor: colors.green
+    borderRadius: radius.md,
+    backgroundColor: colors.ink,
+    paddingHorizontal: 2
   },
   qtyButton: {
-    width: 28,
-    height: 32,
+    width: 30,
+    height: 38,
     alignItems: "center",
     justifyContent: "center"
   },
-  qtyText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "900"
-  },
   qtyCount: {
     color: colors.white,
+    fontFamily: fonts.bold,
     fontSize: 13,
-    fontWeight: "900",
-    minWidth: 18,
+    minWidth: 16,
     textAlign: "center"
   }
 });

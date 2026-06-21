@@ -1,10 +1,13 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { CartBar } from "../components/CartBar";
 import { ProductTile } from "../components/ProductTile";
+import { Chip, IconButton, Screen } from "../components/ui";
 import { categories, type Product, type ProductCategory } from "../data/catalog";
 import { colors } from "../theme/colors";
+import { fonts, radius } from "../theme/typography";
 import type { CartQuantities } from "../types/cart";
 import type { getCartSummary } from "../utils/cart";
 
@@ -17,6 +20,8 @@ type SearchScreenProps = {
   onRemove: (productId: string) => void;
   products: Product[];
 };
+
+const popular = ["Milk", "Banana", "Bread", "Eggs", "Chips"];
 
 export function SearchScreen({
   cart,
@@ -38,60 +43,69 @@ export function SearchScreen({
         .includes(query.trim().toLowerCase());
       return matchesCategory && matchesQuery;
     });
-  }, [category, query]);
+  }, [category, query, products]);
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Pressable onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backText}>Back</Text>
+    <Screen
+      scroll
+      contentStyle={styles.content}
+      overlay={<CartBar onPress={onCart} summary={cartSummary} />}
+    >
+      <View style={styles.header}>
+        <IconButton icon="chevron-left" onPress={onBack} />
+        <Text style={styles.title}>Search</Text>
+      </View>
+
+      <View style={styles.searchBox}>
+        <MaterialCommunityIcons color={colors.muted} name="magnify" size={21} />
+        <TextInput
+          autoFocus
+          onChangeText={setQuery}
+          placeholder="Search milk, fruits, snacks…"
+          placeholderTextColor={colors.faint}
+          style={styles.searchInput}
+          value={query}
+        />
+        {query.length > 0 ? (
+          <Pressable onPress={() => setQuery("")}>
+            <MaterialCommunityIcons color={colors.muted} name="close-circle" size={20} />
           </Pressable>
-          <Text style={styles.title}>Search</Text>
-        </View>
+        ) : null}
+      </View>
 
-        <View style={styles.searchBox}>
-          <TextInput
-            autoFocus
-            onChangeText={setQuery}
-            placeholder="Search milk, fruits, snacks"
-            placeholderTextColor={colors.placeholder}
-            style={styles.searchInput}
-            value={query}
+      <Text style={styles.label}>Popular right now</Text>
+      <View style={styles.popularRow}>
+        {popular.map((item) => (
+          <Chip key={item} label={item} onPress={() => setQuery(item)} />
+        ))}
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chips}
+      >
+        {categories.map((item) => (
+          <Chip
+            key={item}
+            active={category === item}
+            label={item}
+            onPress={() => setCategory(item)}
           />
+        ))}
+      </ScrollView>
+
+      <View style={styles.resultHeader}>
+        <Text style={styles.resultTitle}>Results</Text>
+        <Text style={styles.resultCount}>{filteredProducts.length} items</Text>
+      </View>
+
+      {filteredProducts.length === 0 ? (
+        <View style={styles.empty}>
+          <MaterialCommunityIcons color={colors.faint} name="food-off" size={34} />
+          <Text style={styles.emptyText}>Nothing matched “{query}”.</Text>
         </View>
-
-        <View style={styles.popularBox}>
-          <Text style={styles.boxTitle}>Popular searches</Text>
-          <View style={styles.popularGrid}>
-            {["Milk", "Banana", "Bread", "Biscuits"].map((item) => (
-              <Pressable key={item} onPress={() => setQuery(item)} style={styles.popularTile}>
-                <Text style={styles.popularInitial}>{item[0]}</Text>
-                <Text style={styles.popularText}>{item}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
-          {categories.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setCategory(item)}
-              style={[styles.chip, category === item && styles.activeChip]}
-            >
-              <Text style={[styles.chipText, category === item && styles.activeChipText]}>
-                {item}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <View style={styles.resultHeader}>
-          <Text style={styles.resultTitle}>Results</Text>
-          <Text style={styles.resultCount}>{filteredProducts.length} items</Text>
-        </View>
-
+      ) : (
         <View style={styles.grid}>
           {filteredProducts.map((product) => (
             <ProductTile
@@ -103,142 +117,92 @@ export function SearchScreen({
             />
           ))}
         </View>
-      </ScrollView>
-
-      <CartBar onPress={onCart} summary={cartSummary} />
-    </View>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
   content: {
-    padding: 20,
-    paddingBottom: 104
+    paddingHorizontal: 20,
+    paddingBottom: 130
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
-    paddingTop: 8,
-    marginBottom: 14
-  },
-  backButton: {
-    minHeight: 36,
-    justifyContent: "center"
-  },
-  backText: {
-    color: colors.green,
-    fontSize: 14,
-    fontWeight: "900"
+    gap: 14,
+    marginBottom: 18
   },
   title: {
     color: colors.ink,
-    fontSize: 24,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 26
   },
   searchBox: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: colors.orange,
-    borderRadius: 8,
-    backgroundColor: colors.white,
-    paddingHorizontal: 14,
-    marginBottom: 14
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    marginBottom: 20
   },
   searchInput: {
+    flex: 1,
     height: "100%",
     color: colors.ink,
-    fontSize: 15,
-    fontWeight: "800"
+    fontFamily: fonts.semibold,
+    fontSize: 15
   },
-  popularBox: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.white,
-    padding: 14,
-    marginBottom: 14
-  },
-  boxTitle: {
+  label: {
     color: colors.ink,
+    fontFamily: fonts.extrabold,
     fontSize: 14,
-    fontWeight: "900",
     marginBottom: 12
   },
-  popularGrid: {
+  popularRow: {
     flexDirection: "row",
-    justifyContent: "space-between"
-  },
-  popularTile: {
-    width: "23%",
-    alignItems: "center",
-    gap: 7
-  },
-  popularInitial: {
-    width: 52,
-    height: 52,
-    overflow: "hidden",
-    borderRadius: 8,
-    backgroundColor: colors.greenSoft,
-    color: colors.green,
-    textAlign: "center",
-    textAlignVertical: "center",
-    fontSize: 20,
-    fontWeight: "900"
-  },
-  popularText: {
-    color: colors.ink,
-    fontSize: 11,
-    fontWeight: "900",
-    textAlign: "center"
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 20
   },
   chips: {
-    marginBottom: 16
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 999,
-    backgroundColor: colors.white,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    marginRight: 8
-  },
-  activeChip: {
-    borderColor: colors.green,
-    backgroundColor: colors.green
-  },
-  chipText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900"
-  },
-  activeChipText: {
-    color: colors.white
+    gap: 8,
+    paddingBottom: 20,
+    paddingRight: 8
   },
   resultHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12
+    marginBottom: 14
   },
   resultTitle: {
     color: colors.ink,
-    fontSize: 18,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 18
   },
   resultCount: {
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900"
+    fontFamily: fonts.semibold,
+    fontSize: 13
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between"
+  },
+  empty: {
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 40
+  },
+  emptyText: {
+    color: colors.muted,
+    fontFamily: fonts.semibold,
+    fontSize: 14
   }
 });

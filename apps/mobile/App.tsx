@@ -1,9 +1,12 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import { fontAssets } from "./src/theme/typography";
 
 import { getNearbyShops, getShopProducts } from "./src/api/catalog";
 import { createCodOrder, getOrder, getOrders } from "./src/api/orders";
@@ -64,6 +67,7 @@ function isCompleteCustomerProfile(
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts(fontAssets);
   const [cart, setCart] = useState<CartQuantities>({});
   const [order, setOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -256,7 +260,7 @@ export default function App() {
     navigate("store");
   };
 
-  if (!hasLoadedOnboarding) {
+  if (!hasLoadedOnboarding || !fontsLoaded) {
     return null;
   }
 
