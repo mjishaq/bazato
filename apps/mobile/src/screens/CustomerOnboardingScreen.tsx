@@ -23,12 +23,14 @@ export type CustomerOnboardingProfile = {
 
 type CustomerOnboardingScreenProps = {
   onComplete: (profile: CustomerOnboardingProfile) => void;
+  onLogin: () => void;
 };
 
 const preferences = ["Groceries", "Fruits", "Bakery", "Snacks"];
 
 export function CustomerOnboardingScreen({
-  onComplete
+  onComplete,
+  onLogin
 }: CustomerOnboardingScreenProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -159,6 +161,9 @@ export function CustomerOnboardingScreen({
             style={[styles.primaryButton, !canContinue && styles.disabledButton]}
           >
             <Text style={styles.primaryButtonText}>Create profile</Text>
+          </Pressable>
+          <Pressable onPress={onLogin} style={styles.loginButton}>
+            <Text style={styles.loginButtonText}>Already registered? Login</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -314,6 +319,17 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.white,
     fontSize: 15,
+    fontWeight: "900"
+  },
+  loginButton: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10
+  },
+  loginButtonText: {
+    color: colors.green,
+    fontSize: 14,
     fontWeight: "900"
   }
 });

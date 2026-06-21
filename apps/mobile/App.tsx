@@ -265,7 +265,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="dark" />
         <Stack.Navigator
-          initialRouteName={customerProfile ? "login" : "onboarding"}
+          initialRouteName="onboarding"
           screenOptions={{
             animation: "slide_from_right",
             contentStyle: { backgroundColor: colors.background },
@@ -279,6 +279,7 @@ export default function App() {
                   completeOnboarding(profile);
                   navigation.replace("login");
                 }}
+                onLogin={() => navigation.replace("login")}
               />
             )}
           </Stack.Screen>
