@@ -60,27 +60,31 @@ function mapOrder(order: OrderRow | null): Order | null {
 
 export class PrismaOrderRepository implements OrderRepository {
   async createOrder(order: Order) {
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ keycloakSubject: order.userId }, { phone: order.phone }]
-      }
+    const userByPhone = await prisma.user.findUnique({
+      where: { phone: order.phone }
     });
-    const orderUser = user
-      ? await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            keycloakSubject: order.userId,
-            phone: order.phone,
-            role: "CUSTOMER"
-          }
-        })
-      : await prisma.user.create({
-          data: {
-            keycloakSubject: order.userId,
-            phone: order.phone,
-            role: "CUSTOMER"
-          }
+    const userBySubject = userByPhone
+      ? null
+      : await prisma.user.findUnique({
+          where: { keycloakSubject: order.userId }
         });
+    const orderUser = userByPhone
+      ? userByPhone
+      : userBySubject
+        ? await prisma.user.update({
+            where: { id: userBySubject.id },
+            data: {
+              phone: order.phone,
+              role: "CUSTOMER"
+            }
+          })
+        : await prisma.user.create({
+            data: {
+              keycloakSubject: order.userId,
+              phone: order.phone,
+              role: "CUSTOMER"
+            }
+          });
     const created = await prisma.order.create({
       data: {
         orderNumber: order.id,

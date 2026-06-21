@@ -18,6 +18,17 @@ const jwks =
     : null;
 
 export async function authenticateToken(token: string | null | undefined) {
+  if (env.NODE_ENV !== "production" && token?.startsWith("mock-customer-")) {
+    const phone = token.replace("mock-customer-", "");
+
+    return {
+      sub: `customer-${phone}`,
+      realm_access: {
+        roles: ["customer"]
+      }
+    } satisfies AuthenticatedRequest["auth"];
+  }
+
   if (!jwks || !env.KEYCLOAK_ISSUER) {
     if (env.NODE_ENV === "production") {
       return null;
@@ -33,17 +44,6 @@ export async function authenticateToken(token: string | null | undefined) {
 
   if (!token) {
     return null;
-  }
-
-  if (env.NODE_ENV !== "production" && token.startsWith("mock-customer-")) {
-    const phone = token.replace("mock-customer-", "");
-
-    return {
-      sub: `customer-${phone}`,
-      realm_access: {
-        roles: ["customer"]
-      }
-    } satisfies AuthenticatedRequest["auth"];
   }
 
   try {
