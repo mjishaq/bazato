@@ -185,6 +185,37 @@ h2 {
 .authForm {
   display: grid;
   gap: 14px;
+  animation: formIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Smoothly grow/shrink the auth card as the form swaps between
+   Login (1 field), Sign up (4 fields), and Admin (1 field). */
+.autoHeight {
+  height: auto;
+  overflow: clip;
+  overflow-clip-margin: 8px;
+  transition: height 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes formIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .autoHeight {
+    transition: none;
+  }
+
+  .authForm {
+    animation: none;
+  }
 }
 
 /* ---------- Buttons ---------- */
