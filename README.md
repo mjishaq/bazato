@@ -15,7 +15,7 @@ This repo is scaffolded as an npm workspace monorepo. The current development ta
 ## First Run Without Docker
 
 Use this path for a fresh clone when Docker is not installed. It uses in-memory
-mock data, mock OTP, and does not require Postgres or Keycloak.
+mock data, mock OTP, and does not require Postgres.
 
 ```bash
 npm install
@@ -72,18 +72,14 @@ For Expo Go on a physical phone, copy `apps/mobile/.env.example` to
 `apps/mobile/.env` and set `EXPO_PUBLIC_API_URL` to your laptop LAN IP, such as
 `http://192.168.1.25:4000`. `localhost` points to the phone itself.
 
-The mobile login can run in two modes:
-
-- `EXPO_PUBLIC_AUTH_PROVIDER=mock-otp` for local OTP development.
-- `EXPO_PUBLIC_AUTH_PROVIDER=keycloak` for real Keycloak login.
+The mobile login currently uses mock OTP for local development.
 
 ## Backend Security And Database
 
-- Authentication target: Keycloak.
 - Database target: PostgreSQL through Prisma.
 - Development mode still supports mock OTP and mock in-memory catalog/order data.
-- Production mode should set `KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URL`,
-  `KEYCLOAK_AUDIENCE`, and `DATABASE_URL`.
+- Production mode should set `DATABASE_URL` and production-grade auth/SMS
+  provider settings.
 
 Generate Prisma Client:
 
@@ -103,7 +99,7 @@ Seed shops and products:
 npm --workspace apps/backend run db:seed
 ```
 
-For the full local Postgres and Keycloak flow, see
+For the full local Postgres flow, see
 [`docs/backend-next-steps.md`](docs/backend-next-steps.md).
 
 After Docker Desktop is installed and running, the infrastructure can be started
@@ -113,8 +109,8 @@ with:
 npm run setup:infra
 ```
 
-This starts app Postgres, Keycloak Postgres, and Keycloak, applies additive
-Prisma migrations, seeds catalog data, and imports the local Keycloak realm.
+This starts app Postgres, applies additive Prisma migrations, and seeds catalog
+data.
 
 Run the holistic local smoke test:
 
@@ -122,15 +118,5 @@ Run the holistic local smoke test:
 npm run smoke:holistic
 ```
 
-The smoke test verifies backend health, Keycloak token validation, OTP auth,
-vendor inventory, mobile catalog APIs, order creation, realtime tracking, and
-admin summary.
-
-Local Keycloak test user:
-
-```text
-Username: 9876543210
-Password: Test@1234
-Client: bazzato-mobile
-Realm: bazzato
-```
+The smoke test verifies backend health, OTP auth, vendor inventory, mobile
+catalog APIs, order creation, realtime tracking, and admin summary.

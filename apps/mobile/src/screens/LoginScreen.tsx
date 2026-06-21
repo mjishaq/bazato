@@ -10,13 +10,7 @@ import {
   View
 } from "react-native";
 
-import {
-  getKeycloakConfigurationWarning,
-  isKeycloakAuthEnabled,
-  phoneAuthGateway,
-  type AuthSession
-} from "../services/authGateway";
-import { useKeycloakAuth } from "../services/keycloakAuth";
+import { phoneAuthGateway, type AuthSession } from "../services/authGateway";
 import { colors } from "../theme/colors";
 
 type LoginStep = "phone" | "otp";
@@ -32,9 +26,6 @@ export function LoginScreen({
   lockPhone = false,
   onComplete
 }: LoginScreenProps) {
-  const keycloakAuth = useKeycloakAuth();
-  const keycloakEnabled = isKeycloakAuthEnabled();
-  const keycloakWarning = getKeycloakConfigurationWarning();
   const [step, setStep] = useState<LoginStep>("phone");
   const [phone, setPhone] = useState(initialPhone);
   const [otp, setOtp] = useState("");
@@ -103,22 +94,6 @@ export function LoginScreen({
     }
   };
 
-  const handleKeycloakSignIn = async () => {
-    try {
-      setError("");
-      setIsSubmitting(true);
-      onComplete(await keycloakAuth.signIn());
-    } catch (signInError) {
-      setError(
-        signInError instanceof Error
-          ? signInError.message
-          : "Could not complete Keycloak sign-in."
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -136,33 +111,8 @@ export function LoginScreen({
           </Text>
         </View>
 
-        {keycloakEnabled ? (
+        {step === "phone" ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Secure sign in</Text>
-            <Pressable
-              disabled={!keycloakAuth.isReady || isSubmitting}
-              onPress={handleKeycloakSignIn}
-              style={[
-                styles.primaryButton,
-                (!keycloakAuth.isReady || isSubmitting) && styles.disabledButton
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSubmitting ? "Opening..." : "Continue with Keycloak"}
-              </Text>
-            </Pressable>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            <Text style={styles.helpText}>
-              Login is handled securely by the configured identity provider.
-            </Text>
-          </View>
-        ) : null}
-
-        {!keycloakEnabled && step === "phone" ? (
-          <View style={styles.card}>
-            {keycloakWarning ? (
-              <Text style={styles.warningText}>{keycloakWarning}</Text>
-            ) : null}
             <Text style={styles.label}>
               {lockPhone ? "Registered mobile number" : "Mobile number"}
             </Text>
@@ -198,7 +148,7 @@ export function LoginScreen({
           </View>
         ) : null}
 
-        {!keycloakEnabled && step === "otp" ? (
+        {step === "otp" ? (
           <View style={styles.card}>
             <View style={styles.rowBetween}>
               <View>
@@ -370,13 +320,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 18,
     marginTop: 10
-  },
-  warningText: {
-    color: colors.orange,
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 18,
-    marginBottom: 12
   },
   rowBetween: {
     flexDirection: "row",

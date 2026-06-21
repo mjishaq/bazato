@@ -82,9 +82,6 @@ Invoke-Checked -Label "Prisma migrations" -Command {
 Invoke-Checked -Label "Database seed" -Command {
   npm --workspace apps/backend run db:seed
 }
-Invoke-Checked -Label "Keycloak setup" -Command {
-  .\scripts\setup-keycloak.ps1
-}
 
 Write-Host ""
 Write-Host "Infrastructure is ready."
@@ -96,12 +93,5 @@ Write-Host "  npm run dev:backend"
 Write-Host ""
 Write-Host "Mobile with mock OTP:"
 Write-Host "  `$env:EXPO_PUBLIC_AUTH_PROVIDER='mock-otp'"
-Write-Host "  `$env:EXPO_PUBLIC_API_URL='http://YOUR_LAPTOP_IP:$ApiPort'"
-Write-Host "  npm run dev:mobile"
-Write-Host ""
-Write-Host "Mobile with Keycloak:"
-Write-Host "  `$env:EXPO_PUBLIC_AUTH_PROVIDER='keycloak'"
-Write-Host "  `$env:EXPO_PUBLIC_KEYCLOAK_ISSUER='http://YOUR_LAPTOP_IP:8080/realms/bazzato'"
-Write-Host "  `$env:EXPO_PUBLIC_KEYCLOAK_CLIENT_ID='bazzato-mobile'"
 Write-Host "  `$env:EXPO_PUBLIC_API_URL='http://YOUR_LAPTOP_IP:$ApiPort'"
 Write-Host "  npm run dev:mobile"

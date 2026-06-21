@@ -19,7 +19,6 @@
     "dev:mobile:web": "npm --workspace apps/mobile run web -- --port 8081",
     "dev:vendor": "npm --workspace apps/vendor run dev",
     "setup:infra": "powershell -ExecutionPolicy Bypass -File scripts/setup-infra.ps1",
-    "setup:keycloak": "powershell -ExecutionPolicy Bypass -File scripts/setup-keycloak.ps1",
     "smoke:holistic": "node scripts/smoke-holistic.mjs",
     "lint": "npm --workspaces --if-present run lint",
     "typecheck": "npm --workspaces --if-present run typecheck",

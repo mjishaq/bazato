@@ -1,11 +1,8 @@
 import WebSocket from "ws";
 
 const api = process.env.BAZZATO_API_URL ?? "http://localhost:4000";
-const keycloakIssuer =
-  process.env.BAZZATO_KEYCLOAK_ISSUER ?? "http://localhost:8080/realms/bazzato";
 const adminPhone = process.env.BAZZATO_ADMIN_PHONE ?? "966500000000";
 const customerPhone = process.env.BAZZATO_CUSTOMER_PHONE ?? "9876543210";
-const keycloakPassword = process.env.BAZZATO_KEYCLOAK_PASSWORD ?? "Test@1234";
 const vendorPhone = process.env.BAZZATO_VENDOR_PHONE ?? "966511112222";
 const headers = { "Content-Type": "application/json" };
 
@@ -18,36 +15,6 @@ async function requestJson(url, options = {}) {
   }
 
   return data;
-}
-
-async function checkKeycloak() {
-  const data = await requestJson(`${keycloakIssuer}/.well-known/openid-configuration`);
-  const tokenParams = new URLSearchParams({
-    client_id: "bazzato-mobile",
-    grant_type: "password",
-    password: keycloakPassword,
-    scope: "openid profile phone",
-    username: customerPhone
-  });
-  const tokenResponse = await requestJson(`${keycloakIssuer}/protocol/openid-connect/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: tokenParams
-  });
-  const keycloakOrders = await requestJson(`${api}/orders`, {
-    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-  });
-  const payload = JSON.parse(
-    Buffer.from(tokenResponse.access_token.split(".")[1], "base64url").toString("utf8")
-  );
-
-  return {
-    audience: payload.aud,
-    issuer: data.issuer,
-    ordersAccepted: Array.isArray(keycloakOrders.orders),
-    roles: payload.realm_access?.roles ?? [],
-    tokenEndpoint: Boolean(data.token_endpoint)
-  };
 }
 
 async function getMockCustomerToken() {
@@ -117,7 +84,6 @@ async function waitForRealtimeStatus({ orderId, status, token, vendorToken }) {
 
 async function main() {
   const health = await requestJson(`${api}/health`);
-  const keycloak = await checkKeycloak();
   const customerToken = await getMockCustomerToken();
 
   const adminLogin = await requestJson(`${api}/vendor/admin/login`, {
@@ -196,7 +162,14 @@ async function main() {
           totalOrders: adminSummary.totals.totalOrders
         },
         health,
-        keycloak,
+        auth: {
+          mode: "mock-otp",
+          ordersAccepted: Array.isArray(
+            (await requestJson(`${api}/orders`, {
+              headers: { Authorization: `Bearer ${customerToken}` }
+            })).orders
+          )
+        },
         order: {
           id: created.order.id,
           shopName: fetchedOrder.order.shopName,
