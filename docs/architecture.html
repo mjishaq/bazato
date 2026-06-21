@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BAZZATO · ARCHITECTURE BLUEPRINT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper:        #0b2640;   /* cyanotype base */
+    --paper-2:      #0e2c4a;
+    --paper-deep:   #081d31;
+    --ink:          #eef5fc;   /* pale drafting ink */
+    --ink-dim:      #9cbbd6;
+    --line:         rgba(150,193,228,0.05);
+    --line-strong:  rgba(150,193,228,0.10);
+    --rule:         rgba(150,193,228,0.28);  /* visible structural rules */
+    --accent:       #ff7a4d;   /* drafting red marker */
+    --accent-soft:  rgba(255,122,77,0.12);
+    --amber:        #ffc24b;
+    --cyan:         #6fd6e9;
+    --grid-fine:    26px;
+    --grid-bold:    130px;
+    --maxw:         1180px;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+    --display: "Anton", "IBM Plex Sans", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.62;
+    font-size: 15.5px;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px),
+      linear-gradient(var(--line-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-strong) 1px, transparent 1px),
+      radial-gradient(140% 120% at 50% 0%, var(--paper-2), var(--paper-deep) 90%);
+    background-size:
+      var(--grid-fine) var(--grid-fine),
+      var(--grid-fine) var(--grid-fine),
+      var(--grid-bold) var(--grid-bold),
+      var(--grid-bold) var(--grid-bold),
+      100% 100%;
+    background-attachment: fixed;
+  }
+  /* grain overlay */
+  body::after {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--amber); }
+
+  code, .mono { font-family: var(--mono); }
+  code {
+    font-size: 0.84em; color: var(--cyan);
+    background: rgba(90,209,230,0.08);
+    border: 1px solid rgba(90,209,230,0.2);
+    padding: 0.05em 0.38em; border-radius: 2px;
+  }
+  pre {
+    font-family: var(--mono); font-size: 0.8rem; line-height: 1.5;
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px; overflow-x: auto; color: var(--ink);
+    position: relative;
+  }
+  pre code { background: none; border: none; color: var(--ink); padding: 0; font-size: 1em; }
+
+  /* ===== Syntax highlight tokens (blueprint palette) ===== */
+  .tok-comment { color: #6f9e87; font-style: italic; }
+  .tok-tree    { color: rgba(156,187,214,0.42); }
+  .tok-dir     { color: var(--cyan); }
+  .tok-file    { color: var(--ink-dim); }
+  .tok-pkg     { color: var(--accent); }
+  .tok-cmd     { color: var(--accent); font-weight: 500; }
+  .tok-sub     { color: var(--amber); }
+  .tok-flag    { color: var(--amber); }
+  .tok-script  { color: var(--cyan); }
+  .tok-num     { color: #c79bff; }
+
+  /* ===== Title block (drawing sheet header) ===== */
+  .sheet {
+    max-width: var(--maxw); margin: 0 auto; padding: 0 24px;
+  }
+  .titleblock {
+    margin-top: 26px;
+    border: 1.5px solid var(--rule);
+    background: rgba(7, 27, 46, 0.78);
+    display: grid; grid-template-columns: 1fr 270px;
+  }
+  .titleblock .lead { padding: 26px 30px; border-right: 1.5px solid var(--rule); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.32em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  .titleblock h1 {
+    font-family: var(--display); font-weight: 400; font-size: clamp(2.6rem, 7vw, 5.2rem);
+    line-height: 0.9; letter-spacing: 0.01em; margin: 0; text-transform: uppercase;
+    color: var(--ink);
+  }
+  .titleblock h1 b { color: var(--accent); -webkit-text-stroke: 0; }
+  .titleblock .desc { margin: 16px 0 0; color: var(--ink-dim); max-width: 60ch; font-size: 0.95rem; }
+  .meta { display: grid; grid-template-rows: repeat(4, 1fr); }
+  .meta .row { padding: 10px 16px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .meta .row:last-child { border-bottom: none; }
+  .meta .k { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-dim); }
+  .meta .v { font-family: var(--mono); font-size: 0.78rem; color: var(--ink); text-align: right; }
+  .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 22px; }
+  .tag {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase;
+    border: 1px solid var(--line-strong); padding: 4px 9px; color: var(--ink-dim);
+  }
+  .tag::before { content: "▸ "; color: var(--accent); }
+
+  /* ===== Layout ===== */
+  .layout { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 232px 1fr; gap: 0; }
+  nav.index {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    padding: 40px 22px 40px 22px; border-right: 1.5px solid var(--rule);
+  }
+  nav.index .legend { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.26em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+  nav.index ol { list-style: none; counter-reset: idx; padding: 0; margin: 0; }
+  nav.index li { counter-increment: idx; margin: 1px 0; }
+  nav.index a {
+    display: grid; grid-template-columns: 30px 1fr; align-items: baseline; gap: 6px;
+    font-family: var(--mono); font-size: 0.8rem; color: var(--ink-dim);
+    padding: 5px 8px; border: 1px solid transparent;
+  }
+  nav.index a::before { content: counter(idx, decimal-leading-zero); color: var(--accent); font-size: 0.72rem; }
+  nav.index a:hover { color: var(--ink); border-color: var(--line); background: rgba(255,255,255,0.02); }
+
+  main {
+    padding: 40px 36px 40px 40px; min-width: 0;
+    background: rgba(7, 27, 46, 0.82);
+    backdrop-filter: blur(1.5px);
+    border-right: 1.5px solid var(--rule);
+    border-bottom: 1.5px solid var(--rule);
+  }
+  nav.index { background: rgba(7, 27, 46, 0.72); }
+
+  section { margin-bottom: 58px; scroll-margin-top: 16px; }
+  .sechead { display: flex; align-items: flex-end; gap: 18px; border-bottom: 1.5px solid var(--rule); padding-bottom: 10px; margin-bottom: 22px; position: relative; }
+  .sechead .no { font-family: var(--display); font-weight: 400; font-size: 3.4rem; line-height: 0.8; color: var(--accent); }
+  .sechead h2 { font-family: var(--display); font-weight: 400; font-size: 1.7rem; letter-spacing: 0.02em; text-transform: uppercase; margin: 0; color: var(--ink); }
+  .sechead::after { content: ""; position: absolute; right: 0; bottom: -1.5px; width: 46px; height: 1.5px; background: var(--accent); }
+
+  h3 { font-family: var(--mono); font-weight: 600; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cyan); margin: 26px 0 10px; }
+  h4 { font-family: var(--mono); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin: 18px 0 8px; }
+  h4 .pill { vertical-align: middle; }
+  p { margin: 0 0 13px; }
+  ul, ol { margin: 0 0 13px; padding-left: 20px; }
+  li { margin: 4px 0; }
+  li::marker { color: var(--accent); }
+
+  /* ===== Detail callouts (cards) ===== */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(212px, 1fr)); gap: 0; border: 1px solid var(--rule); margin: 18px 0; }
+  .card { padding: 18px 18px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); position: relative; }
+  .card::before { content: ""; position: absolute; top: 8px; left: 8px; width: 7px; height: 7px; border-top: 1.5px solid var(--accent); border-left: 1.5px solid var(--accent); }
+  .card h4 { margin: 0 0 6px; color: var(--ink); }
+  .card p { margin: 0; color: var(--ink-dim); font-size: 0.86rem; }
+  .card .glyph { font-family: var(--mono); color: var(--accent); font-size: 0.7rem; letter-spacing: 0.2em; display: block; margin-bottom: 8px; }
+
+  /* ===== Spec tables ===== */
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.82rem; font-family: var(--mono); }
+  th, td { text-align: left; padding: 8px 11px; border: 1px solid var(--rule); vertical-align: top; }
+  th { background: var(--paper-deep); color: var(--cyan); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.7rem; }
+  td { background: rgba(7,24,41,0.5); }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+  td code { white-space: nowrap; }
+
+  /* ===== Method pills (drafting tags) ===== */
+  .pill { font-family: var(--mono); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; padding: 2px 7px; text-transform: uppercase; border: 1px solid; display: inline-block; }
+  .pill.get   { color: var(--cyan);   border-color: var(--cyan); }
+  .pill.post  { color: var(--amber);  border-color: var(--amber); }
+  .pill.put,
+  .pill.patch { color: #c79bff;        border-color: #c79bff; }
+  .pill.ws    { color: var(--accent); border-color: var(--accent); }
+  .pill.pub   { color: var(--cyan);   border-color: rgba(90,209,230,0.5); }
+  .pill.auth  { color: var(--accent); border-color: rgba(255,106,61,0.55); }
+
+  /* ===== Margin notes ===== */
+  .note { border: 1px solid var(--rule); border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 13px 16px; margin: 18px 0; font-size: 0.9rem; }
+  .note.warn { border-left-color: var(--amber); background: rgba(255,194,75,0.1); }
+  .note .lbl { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 5px; }
+  .note.warn .lbl { color: var(--amber); }
+
+  /* ===== Drawing frame (diagrams) ===== */
+  .fig { margin: 18px 0; border: 1.5px solid var(--rule); background: var(--paper-deep); }
+  .fig .frame { padding: 20px 22px; overflow-x: auto; background: repeating-linear-gradient(45deg, transparent, transparent 13px, rgba(255,255,255,0.012) 13px, rgba(255,255,255,0.012) 14px); }
+  .fig pre { background: none; border: none; border-left: none; padding: 0; color: var(--ink); font-size: 0.78rem; }
+  .fig .cap { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); border-top: 1px solid var(--rule); padding: 7px 14px; display: flex; justify-content: space-between; }
+  .fig .cap b { color: var(--accent); font-weight: 600; }
+
+  footer { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 80px; }
+  .revblock { border: 1.5px solid var(--rule); background: rgba(7,27,46,0.82); display: grid; grid-template-columns: repeat(4, 1fr); font-family: var(--mono); font-size: 0.72rem; }
+  .revblock div { padding: 11px 14px; border-right: 1px solid var(--rule); }
+  .revblock div:last-child { border-right: none; }
+  .revblock .k { color: var(--ink-dim); letter-spacing: 0.18em; text-transform: uppercase; font-size: 0.6rem; display: block; margin-bottom: 4px; }
+
+  /* load animation */
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .titleblock, section { animation: rise 0.6s cubic-bezier(.2,.7,.2,1) both; }
+  section:nth-of-type(1){animation-delay:.05s} section:nth-of-type(2){animation-delay:.1s}
+  section:nth-of-type(3){animation-delay:.12s} section:nth-of-type(4){animation-delay:.14s}
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.index { display: none; }
+    main { padding: 30px 0; }
+    .titleblock { grid-template-columns: 1fr; }
+    .titleblock .lead { border-right: none; border-bottom: 1.5px solid var(--line-strong); }
+    .revblock { grid-template-columns: 1fr 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="titleblock">
+    <div class="lead">
+      <p class="eyebrow">System Architecture · Drawing Set</p>
+      <h1>Bazz<b>ato</b></h1>
+      <p class="desc">A hyperlocal nearby-store ordering marketplace. Customers browse shops around
+      them, place cash-on-delivery orders, and track them live; vendors manage catalog and fulfilment.
+      This sheet documents the monorepo, services, API surface, data model, dual-auth architecture,
+      and Railway deployment.</p>
+      <div class="tags">
+        <span class="tag">npm workspaces</span>
+        <span class="tag">Node 22</span>
+        <span class="tag">Express · Prisma</span>
+        <span class="tag">Next.js 15</span>
+        <span class="tag">Expo RN</span>
+        <span class="tag">Keycloak 25</span>
+        <span class="tag">PostgreSQL 16</span>
+        <span class="tag">Railway</span>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="row"><span class="k">Project</span><span class="v">bazzato</span></div>
+      <div class="row"><span class="k">Services</span><span class="v">4 + 2 DB</span></div>
+      <div class="row"><span class="k">Environments</span><span class="v">develop · master</span></div>
+      <div class="row"><span class="k">Sheet</span><span class="v">A-01 / 01</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="index">
+    <div class="legend">Sheet Index</div>
+    <ol>
+      <li><a href="#overview">System Overview</a></li>
+      <li><a href="#structure">Repository</a></li>
+      <li><a href="#stack">Tech Stack</a></li>
+      <li><a href="#backend">Backend API</a></li>
+      <li><a href="#data">Data Model</a></li>
+      <li><a href="#vendor">Vendor Portal</a></li>
+      <li><a href="#mobile">Mobile App</a></li>
+      <li><a href="#keycloak">Keycloak</a></li>
+      <li><a href="#auth">Auth Flows</a></li>
+      <li><a href="#orders">Order Lifecycle</a></li>
+      <li><a href="#env">Environment</a></li>
+      <li><a href="#deploy">Deployment</a></li>
+      <li><a href="#dev">Local Dev</a></li>
+      <li><a href="#notes">Notable Details</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- 01 -->
+    <section id="overview">
+      <div class="sechead"><span class="no">01</span><h2>System Overview</h2></div>
+      <p>Four deployable services share one application database, with a separate database backing
+      Keycloak. Two client apps — the customer mobile app and the vendor web portal — talk to a
+      single backend API.</p>
+      <div class="cards">
+        <div class="card"><span class="glyph">A · API</span><h4>Backend</h4><p>Express + Prisma. Catalog, orders, auth, vendor/admin, and a WebSocket for live order tracking.</p></div>
+        <div class="card"><span class="glyph">B · WEB</span><h4>Vendor Portal</h4><p>Next.js 15 single-page app: onboarding, login, dashboard, product editing, order &amp; admin views.</p></div>
+        <div class="card"><span class="glyph">C · APP</span><h4>Mobile</h4><p>Expo / React Native (also web-exported). 11 screens, OTP or Keycloak login, live tracking.</p></div>
+        <div class="card"><span class="glyph">D · IDP</span><h4>Keycloak</h4><p>Customer identity provider (production target). Realm <code>bazzato</code> imported on boot.</p></div>
+      </div>
+      <div class="note">
+        <span class="lbl">Key principle</span>
+        <strong>Two independent auth systems.</strong> Customers authenticate via Keycloak (or mock OTP
+        in dev). Vendors and admins authenticate via <em>backend-issued</em> HS256 JWTs signed with
+        <code>JWT_SECRET</code> — they do not pass through Keycloak.
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section id="structure">
+      <div class="sechead"><span class="no">02</span><h2>Repository</h2></div>
+      <p>An npm-workspaces monorepo named <code>bazzato</code> (<code>private: true</code>), with
+      workspaces under <code>apps/*</code> and <code>packages/*</code>.</p>
+<pre><code class="lang-tree">bazato/
+├── apps/
+│   ├── backend/        # Express API           @bazzato/backend
+│   ├── mobile/         # Expo RN customer app   @bazzato/mobile
+│   └── vendor/         # Next.js vendor portal  @bazzato/vendor
+├── packages/
+│   └── shared/         # Shared TS types        @bazzato/shared  (scaffold, unused)
+├── infra/
+│   ├── docker-compose.dev.yml   # Postgres + Keycloak for local dev
+│   └── keycloak/                # Keycloak Dockerfile + realm import
+├── scripts/            # dev-backend-mock.mjs, smoke-holistic.mjs, setup-*.ps1
+├── docs/               # phase-0.md, security.md, backend-next-steps.md, architecture.html
+├── package.json        # workspace root + orchestration scripts
+└── package-lock.json</code></pre>
+      <p>No root <code>tsconfig.json</code> and no root <code>.nvmrc</code>; each app pins
+      <code>.node-version = 22</code>, while the root <code>engines</code> require Node ≥ 20, npm ≥ 10.</p>
+    </section>
+
+    <!-- 03 -->
+    <section id="stack">
+      <div class="sechead"><span class="no">03</span><h2>Tech Stack</h2></div>
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Backend runtime</td><td>Node 22, Express (ESM)</td><td><code>type: module</code>, entry <code>dist/server.js</code></td></tr>
+          <tr><td>ORM / DB</td><td>Prisma + adapter-pg, PostgreSQL 16</td><td>Dual data source (memory / postgres)</td></tr>
+          <tr><td>Backend security</td><td>helmet, cors, rate-limit, jose, zod</td><td>120 req/min, 1 MB JSON cap</td></tr>
+          <tr><td>Realtime</td><td><code>ws</code> WebSocket server</td><td>Live order updates via EventEmitter</td></tr>
+          <tr><td>Vendor web</td><td>Next.js 15 (App Router), React 18</td><td>Single-page client component</td></tr>
+          <tr><td>Mobile</td><td>Expo ~52, React Navigation</td><td>Native stack; web export via <code>serve</code></td></tr>
+          <tr><td>Identity</td><td>Keycloak 25</td><td>Realm <code>bazzato</code>, OAuth PKCE</td></tr>
+          <tr><td>Hosting</td><td>Railway</td><td>NIXPACKS &amp; Dockerfile builders</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 04 -->
+    <section id="backend">
+      <div class="sechead"><span class="no">04</span><h2>Backend API</h2></div>
+      <p>Built by <code>createApp()</code> (<code>src/app.ts</code>), served from <code>src/server.ts</code>
+      on <code>PORT</code> (default <code>4000</code>). Middleware: <code>helmet</code> → rate-limit
+      (120/min) → <code>cors</code> → <code>express.json({ limit:"1mb" })</code> → <code>morgan</code>.
+      A WebSocket server attaches to the same HTTP server for live tracking.</p>
+
+      <h3>Route map</h3>
+      <table>
+        <thead><tr><th>Mount</th><th>Router</th><th>Access</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /</code></td><td>status JSON</td><td><span class="pill pub">public</span></td></tr>
+          <tr><td><code>/health</code></td><td>healthRouter</td><td><span class="pill pub">public</span></td></tr>
+          <tr><td><code>/auth</code></td><td>authRouter</td><td><span class="pill pub">public</span></td></tr>
+          <tr><td><code>/catalog</code></td><td>catalogRouter</td><td><span class="pill pub">public</span></td></tr>
+          <tr><td><code>/orders</code></td><td>ordersRouter</td><td><span class="pill auth">customer JWT</span></td></tr>
+          <tr><td><code>/vendor</code></td><td>vendorRouter</td><td><span class="pill auth">app JWT</span></td></tr>
+        </tbody>
+      </table>
+
+      <h4>Auth <span class="pill pub">public</span></h4>
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Body / Result</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill post">post</span></td><td><code>/auth/request-otp</code></td><td><code>{ phone }</code> → <code>{ phone, otp?, message }</code></td></tr>
+          <tr><td><span class="pill post">post</span></td><td><code>/auth/verify-otp</code></td><td><code>{ phone, otp }</code> → <code>{ token, user }</code> · 401</td></tr>
+        </tbody>
+      </table>
+
+      <h4>Catalog <span class="pill pub">public</span></h4>
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Query</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill get">get</span></td><td><code>/catalog/shops</code></td><td><code>limit</code> (20)</td></tr>
+          <tr><td><span class="pill get">get</span></td><td><code>/catalog/shops/:shopId</code></td><td>—</td></tr>
+          <tr><td><span class="pill get">get</span></td><td><code>/catalog/shops/:shopId/products</code></td><td><code>category</code>, <code>q</code></td></tr>
+          <tr><td><span class="pill get">get</span></td><td><code>/catalog/products</code></td><td><code>category</code>, <code>q</code></td></tr>
+        </tbody>
+      </table>
+
+      <h4>Orders <span class="pill auth">customer JWT</span></h4>
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill post">post</span></td><td><code>/orders</code></td><td>Create COD order: <code>{ phone, shopId, items[], deliveryAddress?, note? }</code></td></tr>
+          <tr><td><span class="pill get">get</span></td><td><code>/orders</code></td><td>List orders for authenticated subject</td></tr>
+          <tr><td><span class="pill get">get</span></td><td><code>/orders/:orderId</code></td><td>Single order</td></tr>
+          <tr><td><span class="pill patch">patch</span></td><td><code>/orders/:orderId/status</code></td><td>Update status</td></tr>
+          <tr><td><span class="pill ws">ws</span></td><td><code>/orders/:orderId/live?token=</code></td><td>Push <code>order.updated</code></td></tr>
+        </tbody>
+      </table>
+
+      <h4>Vendor &amp; Admin <span class="pill auth">app JWT</span></h4>
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Auth</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill post">post</span></td><td><code>/vendor/onboarding</code></td><td><span class="pill pub">public</span> → vendor JWT</td></tr>
+          <tr><td><span class="pill post">post</span></td><td><code>/vendor/login</code></td><td><span class="pill pub">public</span> by <code>ownerPhone</code></td></tr>
+          <tr><td><span class="pill post">post</span></td><td><code>/vendor/admin/login</code></td><td><span class="pill pub">public</span> · phone == <code>ADMIN_PHONE</code></td></tr>
+          <tr><td><span class="pill get">get</span></td><td><code>/vendor/admin/summary</code></td><td>admin JWT</td></tr>
+          <tr><td><span class="pill get">get</span></td><td><code>/vendor/shops/:shopId/summary</code></td><td>vendor JWT (same-shop)</td></tr>
+          <tr><td><span class="pill put">put</span></td><td><code>/vendor/shops/:shopId/products</code></td><td>vendor JWT — upsert product</td></tr>
+          <tr><td><span class="pill patch">patch</span></td><td><code>/vendor/orders/:orderId/status</code></td><td>vendor or admin JWT</td></tr>
+        </tbody>
+      </table>
+      <p>Railway build (NIXPACKS): <code>npm install &amp;&amp; npm run db:generate &amp;&amp; npm run build</code>;
+      start: <code>npm run db:deploy &amp;&amp; npm run start</code>; healthcheck <code>/health</code>.</p>
+    </section>
+
+    <!-- 05 -->
+    <section id="data">
+      <div class="sechead"><span class="no">05</span><h2>Data Model</h2></div>
+      <p>Defined in <code>apps/backend/prisma/schema.prisma</code> — six models, three enums.</p>
+      <div class="fig">
+        <div class="frame"><pre>User ──┬── owns ──&lt; Shop ──&lt; Product
+       │                  │
+       └──── places ──&lt; Order &gt;──── shop
+                          │
+                          ├──&lt; OrderItem
+                          └──&lt; OrderTimeline</pre></div>
+        <div class="cap"><span>Entity Relationships</span><span><b>FIG. 1</b></span></div>
+      </div>
+      <table>
+        <thead><tr><th>Model</th><th>Key fields</th><th>Relations</th></tr></thead>
+        <tbody>
+          <tr><td><code>User</code></td><td><code>id</code>, <code>keycloakSubject</code>*, <code>phone</code>*, <code>role</code></td><td>→ orders, → ownedShops</td></tr>
+          <tr><td><code>Shop</code></td><td><code>name</code>, <code>category</code>, <code>lat/lng</code>, <code>radiusMeters</code> (100), <code>isOpen</code>, <code>rating</code></td><td>owner → User, → products, → orders</td></tr>
+          <tr><td><code>Product</code></td><td><code>name</code>, <code>category</code>, <code>unit</code>, <code>price</code>, <code>mrp</code>, <code>imageUrl?</code>, <code>inStock</code></td><td>shop → Shop</td></tr>
+          <tr><td><code>Order</code></td><td><code>orderNumber</code>*, <code>subtotal</code>, <code>deliveryFee</code>, <code>total</code>, <code>paymentMethod</code>, <code>status</code>, <code>deliveryAddress?</code></td><td>user, shop, → items, → timeline</td></tr>
+          <tr><td><code>OrderItem</code></td><td><code>name</code>, <code>quantity</code>, <code>unitPrice</code></td><td>order → Order</td></tr>
+          <tr><td><code>OrderTimeline</code></td><td><code>status</code>, <code>createdAt</code></td><td>order → Order</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Enums.</strong> <code>UserRole</code> = CUSTOMER · VENDOR · ADMIN ·
+      <code>OrderStatus</code> = PLACED · ACCEPTED · PREPARING · READY · COMPLETED · REJECTED · CANCELLED ·
+      <code>PaymentMethod</code> = COD. Two migrations: <code>init_schema</code> and
+      <code>add_order_address_and_product_image</code>. Runtime data layer selected by
+      <code>DATA_SOURCE</code> — <code>memory</code> (default) or <code>postgres</code> (lazy Prisma).</p>
+    </section>
+
+    <!-- 06 -->
+    <section id="vendor">
+      <div class="sechead"><span class="no">06</span><h2>Vendor Portal</h2></div>
+      <p>A Next.js 15 App Router project, but effectively a <strong>single-page app</strong>: all UI
+      lives in <code>app/page.tsx</code> as one client component with internal view state
+      (<code>login</code>, <code>onboarding</code>, <code>dashboard</code>, <code>adminLogin</code>,
+      <code>adminDashboard</code>). No separate API client — inline <code>fetch()</code> against
+      <code>NEXT_PUBLIC_API_URL</code> (default <code>http://localhost:4000</code>).</p>
+      <p>It stores the backend-issued JWT in React state and sends <code>Authorization: Bearer</code> to
+      <code>/vendor/onboarding</code>, <code>/vendor/login</code>, <code>/vendor/admin/login</code>,
+      <code>/vendor/admin/summary</code>, <code>/vendor/shops/:id/summary</code>,
+      <code>/vendor/shops/:id/products</code>, and <code>/vendor/orders/:id/status</code>. Deployed via
+      NIXPACKS (<code>next build</code> → <code>next start</code>, healthcheck <code>/</code>).</p>
+    </section>
+
+    <!-- 07 -->
+    <section id="mobile">
+      <div class="sechead"><span class="no">07</span><h2>Mobile App</h2></div>
+      <p>Expo ~52 React Native using <strong>React Navigation</strong> (native stack, not expo-router).
+      Navigation and global state live in <code>App.tsx</code>; initial route is <code>onboarding</code>
+      when no profile is saved, else <code>login</code>.</p>
+      <table>
+        <thead><tr><th>Screen</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>onboarding</td><td>Name, email, phone, address → AsyncStorage</td></tr>
+          <tr><td>login</td><td>OTP or Keycloak sign-in</td></tr>
+          <tr><td>location</td><td>Location permission gate</td></tr>
+          <tr><td>home · search · store</td><td>Nearby shops, product search, shop catalog</td></tr>
+          <tr><td>cart · checkout</td><td>Cart review &amp; COD checkout</td></tr>
+          <tr><td>tracking</td><td>Live tracking (WebSocket + 15s poll fallback)</td></tr>
+          <tr><td>orders · profile</td><td>Order history &amp; profile / logout</td></tr>
+        </tbody>
+      </table>
+      <p>API via <code>src/api/client.ts</code> (10s timeout) against <code>EXPO_PUBLIC_API_URL</code>.
+      Provider chosen by <code>EXPO_PUBLIC_AUTH_PROVIDER</code> (<code>mock-otp</code> default, or
+      <code>keycloak</code>).</p>
+      <div class="note">
+        <span class="lbl">Web export · Railway</span>
+        The mobile app also ships as a web build. Its <code>Dockerfile</code> bakes the
+        <code>EXPO_PUBLIC_*</code> values as build args, runs <code>expo export --platform web</code>,
+        then serves the static <code>dist/</code> with <code>serve -s -l ${PORT:-8080}</code>. Railway
+        uses the Dockerfile builder — so <code>rootDirectory</code> must be <code>apps/mobile</code>.
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section id="keycloak">
+      <div class="sechead"><span class="no">08</span><h2>Keycloak</h2></div>
+      <p>Keycloak 25 runs from <code>infra/keycloak</code> with a custom Dockerfile that imports the
+      <code>bazzato</code> realm on boot. <code>docker-entrypoint.sh</code> parses <code>DATABASE_URL</code>
+      into <code>KC_DB_*</code>, configures edge-proxy for Railway (<code>KC_PROXY=edge</code>, hostname
+      from <code>RAILWAY_PUBLIC_DOMAIN</code>), then runs <code>kc.sh build</code> and
+      <code>kc.sh start --import-realm --optimized</code>. Healthcheck <code>/realms/bazzato</code>.</p>
+      <table>
+        <thead><tr><th>Client</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>bazzato-api</code></td><td>confidential</td><td>Audience target for API access tokens</td></tr>
+          <tr><td><code>bazzato-mobile</code></td><td>public</td><td>PKCE S256; redirects <code>bazzato://*</code>, <code>exp://*</code>, <code>localhost:8081</code>, <code>*.up.railway.app</code>; audience mapper adds <code>bazzato-api</code></td></tr>
+        </tbody>
+      </table>
+      <p>Realm roles: <code>customer</code>, <code>vendor</code>, <code>admin</code>. Seeded test user
+      <code>9876543210</code> / <code>Test@1234</code> holds the <code>customer</code> role.</p>
+    </section>
+
+    <!-- 09 -->
+    <section id="auth">
+      <div class="sechead"><span class="no">09</span><h2>Auth Flows</h2></div>
+      <div class="fig">
+        <div class="frame"><pre>CUSTOMER (mobile)                        VENDOR / ADMIN (web)
+─────────────────                        ────────────────────
+ mock-otp:                                POST /vendor/login {ownerPhone}
+   POST /auth/request-otp ─┐                       │
+   POST /auth/verify-otp ──┤                       ▼
+   token = mock-customer-{phone}          Backend signs HS256 JWT
+                                          { phone, role, shopId, exp:12h }
+ keycloak:                                     (JWT_SECRET)
+   OAuth PKCE → bazzato-mobile                    │
+   access token (aud: bazzato-api)                ▼
+        │                                  Bearer JWT on /vendor/*
+        ▼
+ Bearer token on /orders/*  ──►  Backend validates:
+                                  • Keycloak JWKS (prod), or
+                                  • mock-customer-* prefix (dev only)</pre></div>
+        <div class="cap"><span>Dual Authentication Paths</span><span><b>FIG. 2</b></span></div>
+      </div>
+      <h3>Customer auth</h3>
+      <p>Handled by <code>src/security/keycloak.ts</code> via <code>requireAuth</code> on
+      <code>/orders</code>. With <code>KEYCLOAK_ISSUER</code> + <code>KEYCLOAK_JWKS_URL</code> set,
+      Bearer tokens validate against Keycloak's JWKS (issuer + audience). Non-prod has two dev
+      fallbacks: no config → <code>development-user</code>; a <code>mock-customer-{phone}</code> token
+      → <code>customer-{phone}</code>. Production disables both and requires Keycloak.</p>
+      <h3>Mock OTP</h3>
+      <p><code>src/services/otpService.ts</code>: with <code>OTP_PROVIDER=mock</code> the code is fixed
+      to <code>MOCK_OTP_CODE</code> (default <code>1234</code>), stored in memory. With <code>=sms</code>,
+      a random 4-digit code is delivered via console or HTTP. Verify returns a
+      <code>mock-customer-{phone}</code> token (dev only).</p>
+      <h3>Vendor / admin auth</h3>
+      <p><code>src/security/appToken.ts</code> issues HS256 JWTs signed with <code>JWT_SECRET</code>
+      (12h), payload <code>{ phone, role, shopId? }</code>. <code>requireAppRole("vendor"|"admin")</code>
+      guards routes; admins reach any shop, vendors are pinned to <code>shopId</code> via
+      <code>requireSameShop</code>. Vendors never touch Keycloak.</p>
+    </section>
+
+    <!-- 10 -->
+    <section id="orders">
+      <div class="sechead"><span class="no">10</span><h2>Order Lifecycle</h2></div>
+      <ol>
+        <li>Customer browses catalog via public <code>GET /catalog/*</code>.</li>
+        <li>Creates an order — <code>POST /orders</code> with Bearer token and <code>{ phone, shopId, items, deliveryAddress }</code>.</li>
+        <li>Backend computes <code>subtotal + DEFAULT_DELIVERY_FEE</code>, creates the order at status <code>placed</code>, records a timeline entry.</li>
+        <li>Customer subscribes to <code>WS /orders/:id/live?token=</code> (15s HTTP poll fallback).</li>
+        <li>Vendor advances status — <code>PATCH /vendor/orders/:id/status</code>.</li>
+        <li>Backend emits <code>orderEvents.orderUpdated</code> → WebSocket pushes <code>order.updated</code> to the customer.</li>
+      </ol>
+      <p>Progression: <code>placed → accepted → preparing → ready → completed</code> (or
+      <code>rejected</code> / <code>cancelled</code>). <code>scripts/smoke-holistic.mjs</code> exercises
+      the full loop end-to-end.</p>
+    </section>
+
+    <!-- 11 -->
+    <section id="env">
+      <div class="sechead"><span class="no">11</span><h2>Environment</h2></div>
+      <h3>Backend</h3>
+      <table>
+        <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>NODE_ENV</code></td><td>development</td><td>Toggles prod guardrails</td></tr>
+          <tr><td><code>PORT</code></td><td>4000</td><td>HTTP listen port</td></tr>
+          <tr><td><code>DATA_SOURCE</code></td><td>memory</td><td><code>memory</code> | <code>postgres</code></td></tr>
+          <tr><td><code>DATABASE_URL</code></td><td>—</td><td>Postgres connection string</td></tr>
+          <tr><td><code>JWT_SECRET</code></td><td>dev-only</td><td>Vendor/admin JWT signing (strong in prod)</td></tr>
+          <tr><td><code>KEYCLOAK_ISSUER · _JWKS_URL · _AUDIENCE</code></td><td>—</td><td>Customer JWT validation</td></tr>
+          <tr><td><code>CORS_ORIGIN</code></td><td>—</td><td>Comma-separated origins</td></tr>
+          <tr><td><code>OTP_PROVIDER</code></td><td>mock</td><td><code>mock</code> | <code>sms</code></td></tr>
+          <tr><td><code>MOCK_OTP_CODE</code></td><td>1234</td><td>Fixed OTP in mock mode</td></tr>
+          <tr><td><code>DEFAULT_SHOP_ID</code></td><td>fresh-mart</td><td>Fallback shop</td></tr>
+          <tr><td><code>DEFAULT_DELIVERY_FEE</code></td><td>20</td><td>COD delivery fee</td></tr>
+          <tr><td><code>ORDER_ID_PREFIX</code></td><td>BZ</td><td>Order number prefix</td></tr>
+          <tr><td><code>ADMIN_PHONE</code></td><td>—</td><td>Admin login phone</td></tr>
+        </tbody>
+      </table>
+      <h3>Vendor &amp; Mobile</h3>
+      <table>
+        <thead><tr><th>App</th><th>Variable</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td>vendor</td><td><code>NEXT_PUBLIC_API_URL</code></td><td>http://localhost:4000</td></tr>
+          <tr><td>vendor</td><td><code>NEXT_PUBLIC_DEFAULT_SHOP_ID</code></td><td>fresh-mart (unused)</td></tr>
+          <tr><td>mobile</td><td><code>EXPO_PUBLIC_API_URL</code></td><td>http://localhost:4000</td></tr>
+          <tr><td>mobile</td><td><code>EXPO_PUBLIC_AUTH_PROVIDER</code></td><td>mock-otp</td></tr>
+          <tr><td>mobile</td><td><code>EXPO_PUBLIC_APP_NAME</code></td><td>Bazzato</td></tr>
+          <tr><td>mobile</td><td><code>EXPO_PUBLIC_DEFAULT_SHOP_ID</code></td><td>fresh-mart</td></tr>
+          <tr><td>mobile</td><td><code>EXPO_PUBLIC_KEYCLOAK_CLIENT_ID</code></td><td>bazzato-mobile</td></tr>
+          <tr><td>mobile</td><td><code>EXPO_PUBLIC_KEYCLOAK_ISSUER</code></td><td>…/realms/bazzato</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 12 -->
+    <section id="deploy">
+      <div class="sechead"><span class="no">12</span><h2>Deployment</h2></div>
+      <p>Railway project <code>grand-analysis</code> hosts two environments mapped to Git branches:
+      <strong>develop</strong> (staging) and <strong>master</strong> (production). Each runs the full
+      stack plus its own databases.</p>
+      <table>
+        <thead><tr><th>Service</th><th>Builder</th><th>Start</th><th>Healthcheck</th><th>Root</th></tr></thead>
+        <tbody>
+          <tr><td>backend</td><td>NIXPACKS</td><td><code>db:deploy &amp;&amp; start</code></td><td><code>/health</code></td><td><code>apps/backend</code></td></tr>
+          <tr><td>vendor</td><td>NIXPACKS</td><td><code>next start</code></td><td><code>/</code></td><td><code>apps/vendor</code></td></tr>
+          <tr><td>mobile</td><td>Dockerfile</td><td><code>serve dist</code></td><td><code>/</code></td><td><code>apps/mobile</code></td></tr>
+          <tr><td>keycloak</td><td>Dockerfile</td><td><code>kc.sh start --import-realm</code></td><td><code>/realms/bazzato</code></td><td><code>infra/keycloak</code></td></tr>
+        </tbody>
+      </table>
+      <div class="note warn">
+        <span class="lbl">Monorepo gotcha</span>
+        Each service's <code>rootDirectory</code> must be set on its Railway service instance (e.g.
+        <code>apps/backend</code>). Without it the builder runs from the repo root, never reads the
+        app's <code>railway.toml</code>/<code>Dockerfile</code>, and fails with “No start command
+        detected.” This setting lives in Railway's service config — not in git — so it is not committed.
+      </div>
+      <p>Both environments default to mock OTP: backend <code>OTP_PROVIDER=mock</code> /
+      <code>MOCK_OTP_CODE=1234</code>, mobile <code>EXPO_PUBLIC_AUTH_PROVIDER=mock-otp</code>; backend
+      <code>CORS_ORIGIN</code> lists that env's vendor and mobile URLs.</p>
+    </section>
+
+    <!-- 13 -->
+    <section id="dev">
+      <div class="sechead"><span class="no">13</span><h2>Local Dev</h2></div>
+      <h4>Zero-setup · in-memory + mock OTP</h4>
+<pre><code class="lang-shell">npm install
+npm run dev:backend:mock   # DATA_SOURCE=memory, OTP_PROVIDER=mock
+npm run dev:mobile         # expo start --offline
+npm run dev:mobile:web     # Expo web on :8081
+npm run dev:vendor         # Next.js on :3000   ·   mock OTP = 1234</code></pre>
+      <h4>Full stack · Docker (Postgres + Keycloak)</h4>
+<pre><code class="lang-shell">npm run setup:infra        # docker-compose: postgres + keycloak
+npm run setup:keycloak     # import / configure realm
+npm run dev:backend        # DATA_SOURCE=postgres
+npm run smoke:holistic     # end-to-end order loop test</code></pre>
+      <p>Docker brings up Postgres (<code>:5432</code>), a separate Keycloak Postgres, and Keycloak
+      (<code>:8080</code>, admin <code>admin:admin</code>). Keycloak test user <code>9876543210</code> /
+      <code>Test@1234</code>.</p>
+    </section>
+
+    <!-- 14 -->
+    <section id="notes">
+      <div class="sechead"><span class="no">14</span><h2>Notable Details</h2></div>
+      <ul>
+        <li><strong>Dual auth</strong> — customers via Keycloak/mock OTP; vendors &amp; admins via backend HS256 JWTs.</li>
+        <li><strong>Dual data source</strong> — <code>memory</code> is the zero-setup default; Postgres is opt-in via <code>DATA_SOURCE=postgres</code> + migrations.</li>
+        <li><strong>Memory-mode quirk</strong> — the in-memory catalog's <code>getShopByOwnerPhone()</code> ignores the phone and returns the first shop.</li>
+        <li><strong>Shared package unused</strong> — <code>@bazzato/shared</code> is scaffolded but not imported; each app defines its own types.</li>
+        <li><strong>Vendor is a single-file SPA</strong> — all views in one Next.js page with view-state routing.</li>
+        <li><strong>Mobile uses React Navigation</strong>, not expo-router — 11 screens wired in <code>App.tsx</code>.</li>
+        <li><strong>Production guardrails</strong> — <code>JWT_SECRET</code> must not be default, and Keycloak is required (dev fallbacks off) when <code>NODE_ENV=production</code>.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="revblock">
+    <div><span class="k">Document</span>Bazzato System Architecture</div>
+    <div><span class="k">Source</span>apps/ · infra/ · packages/</div>
+    <div><span class="k">Sheet</span>A-01 — Rev. B</div>
+    <div><span class="k">Maintenance</span>Update on route / model / deploy changes</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Wrap matches of a set of ordered rules; un-matched gaps are escaped verbatim.
+  function tokenize(seg, rules) {
+    var combined = new RegExp(
+      rules.map(function (r) { return "(" + r.re + ")"; }).join("|"),
+      "g"
+    );
+    var out = "", last = 0, m;
+    while ((m = combined.exec(seg)) !== null) {
+      if (m.index > last) out += esc(seg.slice(last, m.index));
+      for (var i = 0; i < rules.length; i++) {
+        if (m[i + 1] !== undefined) {
+          out += '<span class="' + rules[i].cls + '">' + esc(m[i + 1]) + "</span>";
+          break;
+        }
+      }
+      last = combined.lastIndex;
+      if (m.index === combined.lastIndex) combined.lastIndex++;
+    }
+    out += esc(seg.slice(last));
+    return out;
+  }
+
+  var TREE_RULES = [
+    { re: "@bazzato\\/[A-Za-z0-9_-]+", cls: "tok-pkg" },
+    { re: "[\\u2502\\u251c\\u2514\\u2500]+", cls: "tok-tree" },
+    { re: "[A-Za-z0-9._*-]+\\/", cls: "tok-dir" },
+    { re: "[A-Za-z0-9_-]+\\.[A-Za-z0-9_.-]+", cls: "tok-file" }
+  ];
+
+  var SHELL_RULES = [
+    { re: "\\b(?:npm|npx|node|docker-compose|docker|expo|serve)\\b", cls: "tok-cmd" },
+    { re: "\\b(?:run|install|export|start|deploy|generate)\\b", cls: "tok-sub" },
+    { re: "--?[A-Za-z][A-Za-z0-9-]*", cls: "tok-flag" },
+    { re: "[A-Za-z][A-Za-z0-9]*(?::[A-Za-z0-9]+)+", cls: "tok-script" },
+    { re: ":?\\d+", cls: "tok-num" }
+  ];
+
+  function highlightLine(line, rules) {
+    var hash = line.indexOf("#");
+    var comment = "";
+    if (hash !== -1) {
+      comment = line.slice(hash);
+      line = line.slice(0, hash);
+    }
+    var body = tokenize(line, rules);
+    if (comment) body += '<span class="tok-comment">' + esc(comment) + "</span>";
+    return body;
+  }
+
+  var blocks = document.querySelectorAll("pre code");
+  for (var b = 0; b < blocks.length; b++) {
+    var code = blocks[b];
+    var rules = code.classList.contains("lang-tree") ? TREE_RULES : SHELL_RULES;
+    var lines = code.textContent.split("\n");
+    var html = [];
+    for (var l = 0; l < lines.length; l++) html.push(highlightLine(lines[l], rules));
+    code.innerHTML = html.join("\n");
+  }
+})();
+</script>
+
+</body>
+</html>
