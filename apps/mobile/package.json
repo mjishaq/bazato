@@ -7,6 +7,7 @@
     "build": "expo export --platform web",
     "start": "serve dist -s -l ${PORT:-8080}",
     "dev": "expo start --offline",
+    "dev:clear": "expo start --offline -c",
     "start:online": "expo start",
     "android": "expo start --offline --android",
     "ios": "expo start --offline --ios",

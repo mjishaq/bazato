@@ -34,5 +34,20 @@ export class ApiPhoneAuthGateway implements PhoneAuthGateway {
 export const phoneAuthGateway = new ApiPhoneAuthGateway();
 
 export function isKeycloakAuthEnabled() {
-  return env.authProvider === "keycloak";
+  return (
+    env.authProvider === "keycloak" &&
+    (!env.keycloakIssuerUsesLocalhost || env.allowLocalKeycloak)
+  );
+}
+
+export function getKeycloakConfigurationWarning() {
+  if (env.authProvider !== "keycloak") {
+    return "";
+  }
+
+  if (env.keycloakIssuerUsesLocalhost && !env.allowLocalKeycloak) {
+    return "Keycloak is configured with localhost. For Expo Go on a phone, use your laptop LAN IP or switch to mock OTP.";
+  }
+
+  return "";
 }

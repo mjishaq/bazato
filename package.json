@@ -15,6 +15,7 @@
     "dev:backend": "npm --workspace apps/backend run dev",
     "dev:backend:mock": "node scripts/dev-backend-mock.mjs",
     "dev:mobile": "npm --workspace apps/mobile run dev",
+    "dev:mobile:clear": "npm --workspace apps/mobile run dev:clear",
     "dev:mobile:web": "npm --workspace apps/mobile run web -- --port 8081",
     "dev:vendor": "npm --workspace apps/vendor run dev",
     "setup:infra": "powershell -ExecutionPolicy Bypass -File scripts/setup-infra.ps1",

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import {
+  getKeycloakConfigurationWarning,
   isKeycloakAuthEnabled,
   phoneAuthGateway,
   type AuthSession
@@ -33,6 +34,7 @@ export function LoginScreen({
 }: LoginScreenProps) {
   const keycloakAuth = useKeycloakAuth();
   const keycloakEnabled = isKeycloakAuthEnabled();
+  const keycloakWarning = getKeycloakConfigurationWarning();
   const [step, setStep] = useState<LoginStep>("phone");
   const [phone, setPhone] = useState(initialPhone);
   const [otp, setOtp] = useState("");
@@ -158,6 +160,9 @@ export function LoginScreen({
 
         {!keycloakEnabled && step === "phone" ? (
           <View style={styles.card}>
+            {keycloakWarning ? (
+              <Text style={styles.warningText}>{keycloakWarning}</Text>
+            ) : null}
             <Text style={styles.label}>
               {lockPhone ? "Registered mobile number" : "Mobile number"}
             </Text>
@@ -365,6 +370,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 18,
     marginTop: 10
+  },
+  warningText: {
+    color: colors.orange,
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 18,
+    marginBottom: 12
   },
   rowBetween: {
     flexDirection: "row",
