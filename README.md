@@ -103,39 +103,6 @@ Seed shops and products:
 npm --workspace apps/backend run db:seed
 ```
 
-Open the local database query area:
-
-```powershell
-npm run db:studio
-```
-
-This opens Prisma Studio in the browser for viewing and editing Bazzato app
-tables.
-
-Run SQL against the Docker Postgres database:
-
-```powershell
-npm run db:shell
-```
-
-Common `psql` commands:
-
-```sql
-\dt
-SELECT id, name, category FROM "Shop";
-SELECT id, name, price, "shopId", "isAvailable" FROM "Product";
-SELECT id, "shopName", status, total, "createdAt" FROM "Order" ORDER BY "createdAt" DESC LIMIT 10;
-\q
-```
-
-Run a one-off query from PowerShell:
-
-```powershell
-@'
-SELECT COUNT(*) AS products FROM "Product";
-'@ | npm run db:query
-```
-
 For the full local Postgres and Keycloak flow, see
 [`docs/backend-next-steps.md`](docs/backend-next-steps.md).
 
