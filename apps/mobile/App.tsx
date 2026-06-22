@@ -29,6 +29,7 @@ import {
   CustomerOnboardingScreen,
   type CustomerOnboardingProfile
 } from "./src/screens/CustomerOnboardingScreen";
+import { registerCustomer } from "./src/api/auth";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LocationPermissionScreen } from "./src/screens/LocationPermissionScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
@@ -232,7 +233,8 @@ export default function App() {
     }));
   };
 
-  const completeOnboarding = (profile: CustomerOnboardingProfile) => {
+  const completeOnboarding = async (profile: CustomerOnboardingProfile) => {
+    await registerCustomer(profile);
     setCustomerProfile(profile);
     setDeliveryAddress(profile.address);
     void AsyncStorage.setItem(onboardingStorageKey, JSON.stringify(profile)).catch(
@@ -337,8 +339,8 @@ export default function App() {
           <Stack.Screen name="onboarding">
             {({ navigation }) => (
               <CustomerOnboardingScreen
-                onComplete={(profile) => {
-                  completeOnboarding(profile);
+                onComplete={async (profile) => {
+                  await completeOnboarding(profile);
                   navigation.replace("login");
                 }}
                 onLogin={() => navigation.replace("login")}

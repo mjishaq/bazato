@@ -9,6 +9,32 @@ const phoneSchema = z.object({
   phone: z.string().min(10)
 });
 
+const customerRegistrationSchema = phoneSchema.extend({
+  address: z.string().min(8),
+  email: z.string().email(),
+  name: z.string().min(2),
+  preference: z.string().min(1)
+});
+
+authRouter.post("/register", async (req, res) => {
+  const parsed = customerRegistrationSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid customer profile is required" });
+    return;
+  }
+
+  const customer = await services.auth.registerCustomer({
+    address: parsed.data.address.trim(),
+    email: parsed.data.email.trim().toLowerCase(),
+    name: parsed.data.name.trim(),
+    phone: parsed.data.phone,
+    preference: parsed.data.preference
+  });
+
+  res.status(201).json({ customer });
+});
+
 authRouter.post("/request-otp", async (req, res) => {
   const parsed = phoneSchema.safeParse(req.body);
 
@@ -20,7 +46,7 @@ authRouter.post("/request-otp", async (req, res) => {
   try {
     res.json(await services.auth.requestOtp(parsed.data.phone));
   } catch (error) {
-    res.status(503).json({
+    res.status(404).json({
       error: error instanceof Error ? error.message : "OTP service unavailable"
     });
   }

@@ -1,0 +1,5 @@
+ALTER TABLE "User"
+ADD COLUMN "name" TEXT,
+ADD COLUMN "email" TEXT,
+ADD COLUMN "address" TEXT,
+ADD COLUMN "preference" TEXT;

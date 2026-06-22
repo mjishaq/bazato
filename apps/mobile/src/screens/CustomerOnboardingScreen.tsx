@@ -27,7 +27,7 @@ export type CustomerOnboardingProfile = {
 };
 
 type CustomerOnboardingScreenProps = {
-  onComplete: (profile: CustomerOnboardingProfile) => void;
+  onComplete: (profile: CustomerOnboardingProfile) => Promise<void> | void;
   onLogin: () => void;
 };
 
@@ -43,6 +43,8 @@ export function CustomerOnboardingScreen({
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [preference, setPreference] = useState(preferences[0]);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const phoneDigits = useMemo(() => phone.replace(/\D/g, ""), [phone]);
   const emailValid = useMemo(() => /\S+@\S+\.\S+/.test(email.trim()), [email]);
 
@@ -133,18 +135,31 @@ export function CustomerOnboardingScreen({
           </View>
 
           <Button
-            disabled={!canContinue}
-            label="Create profile"
-            onPress={() =>
-              onComplete({
-                address: address.trim(),
-                email: email.trim().toLowerCase(),
-                name: name.trim(),
-                phone: phoneDigits,
-                preference
-              })
-            }
+            disabled={!canContinue || isSubmitting}
+            label={isSubmitting ? "Creating..." : "Create profile"}
+            onPress={async () => {
+              try {
+                setError("");
+                setIsSubmitting(true);
+                await onComplete({
+                  address: address.trim(),
+                  email: email.trim().toLowerCase(),
+                  name: name.trim(),
+                  phone: phoneDigits,
+                  preference
+                });
+              } catch (profileError) {
+                setError(
+                  profileError instanceof Error
+                    ? profileError.message
+                    : "Could not create profile. Please try again."
+                );
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
           />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Pressable onPress={onLogin} style={styles.loginButton}>
             <Text style={styles.loginButtonText}>Already registered? Login</Text>
           </Pressable>
@@ -283,5 +298,13 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     fontFamily: fonts.bold,
     fontSize: 14
+  },
+  errorText: {
+    color: colors.danger,
+    fontFamily: fonts.semibold,
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 10,
+    textAlign: "center"
   }
 });
