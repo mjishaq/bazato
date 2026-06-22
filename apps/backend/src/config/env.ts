@@ -33,3 +33,7 @@ export const env = envSchema.parse(process.env);
 if (env.NODE_ENV === "production" && env.JWT_SECRET === "development-only-secret") {
   throw new Error("JWT_SECRET must be set to a strong value in production.");
 }
+
+if (env.NODE_ENV === "production" && env.DATA_SOURCE !== "postgres") {
+  throw new Error("DATA_SOURCE=postgres must be set in production.");
+}
