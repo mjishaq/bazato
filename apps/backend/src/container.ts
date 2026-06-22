@@ -4,6 +4,8 @@ import type {
   ProductFilters
 } from "./repositories/catalogRepository.js";
 import { MemoryCatalogRepository } from "./repositories/catalogRepository.js";
+import type { CustomerRepository } from "./repositories/customerRepository.js";
+import { MemoryCustomerRepository } from "./repositories/customerRepository.js";
 import type { OrderRepository } from "./repositories/orderRepository.js";
 import { MemoryOrderRepository } from "./repositories/orderRepository.js";
 import { AuthService } from "./services/authService.js";
@@ -85,6 +87,28 @@ class LazyPrismaOrderRepository implements OrderRepository {
   }
 }
 
+class LazyPrismaCustomerRepository implements CustomerRepository {
+  private repository: Promise<CustomerRepository> | null = null;
+
+  private async getRepository() {
+    this.repository ??= import("./repositories/prismaCustomerRepository.js").then(
+      ({ PrismaCustomerRepository }) => new PrismaCustomerRepository()
+    );
+
+    return this.repository;
+  }
+
+  async getCustomerByPhone(
+    ...args: Parameters<CustomerRepository["getCustomerByPhone"]>
+  ) {
+    return (await this.getRepository()).getCustomerByPhone(...args);
+  }
+
+  async upsertCustomer(...args: Parameters<CustomerRepository["upsertCustomer"]>) {
+    return (await this.getRepository()).upsertCustomer(...args);
+  }
+}
+
 const catalogRepository =
   env.DATA_SOURCE === "postgres"
     ? new LazyPrismaCatalogRepository()
@@ -95,10 +119,15 @@ const orderRepository =
     ? new LazyPrismaOrderRepository()
     : new MemoryOrderRepository();
 
+const customerRepository =
+  env.DATA_SOURCE === "postgres"
+    ? new LazyPrismaCustomerRepository()
+    : new MemoryCustomerRepository();
+
 const otpService = env.OTP_PROVIDER === "sms" ? new SmsOtpService() : new MockOtpService();
 
 export const services = {
-  auth: new AuthService(otpService),
+  auth: new AuthService(otpService, customerRepository),
   catalog: new CatalogService(catalogRepository),
   orders: new OrderService(catalogRepository, orderRepository)
 };

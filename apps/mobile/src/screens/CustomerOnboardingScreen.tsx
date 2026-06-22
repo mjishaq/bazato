@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { type ComponentProps, useMemo, useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,8 +11,12 @@ import {
   TextInput,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Button, Chip } from "../components/ui";
+import { illustrations } from "../theme/assets";
 import { colors } from "../theme/colors";
+import { fonts, radius } from "../theme/typography";
 
 export type CustomerOnboardingProfile = {
   address: string;
@@ -22,7 +27,7 @@ export type CustomerOnboardingProfile = {
 };
 
 type CustomerOnboardingScreenProps = {
-  onComplete: (profile: CustomerOnboardingProfile) => void;
+  onComplete: (profile: CustomerOnboardingProfile) => Promise<void> | void;
   onLogin: () => void;
 };
 
@@ -32,11 +37,14 @@ export function CustomerOnboardingScreen({
   onComplete,
   onLogin
 }: CustomerOnboardingScreenProps) {
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [preference, setPreference] = useState(preferences[0]);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const phoneDigits = useMemo(() => phone.replace(/\D/g, ""), [phone]);
   const emailValid = useMemo(() => /\S+@\S+\.\S+/.test(email.trim()), [email]);
 
@@ -52,53 +60,44 @@ export function CustomerOnboardingScreen({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.keyboardView}
+      style={styles.flex}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 14 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <View style={styles.logoRow}>
-            <View style={styles.logo}>
-              <MaterialCommunityIcons color={colors.white} name="basket" size={30} />
-            </View>
-            <View>
-              <Text style={styles.brand}>Bazzato</Text>
-              <Text style={styles.eyebrow}>Customer onboarding</Text>
-            </View>
+          <View style={styles.logo}>
+            <MaterialCommunityIcons color={colors.onPrimary} name="basket" size={26} />
           </View>
-          <Text style={styles.title}>Set up your nearby shopping profile</Text>
-          <Text style={styles.subtitle}>
-            Register your details once. We will use this mobile number for OTP
-            login and this address during checkout.
-          </Text>
+          <Image resizeMode="contain" source={illustrations.scooter} style={styles.heroArt} />
         </View>
 
+        <Text style={styles.brand}>BAZZATO</Text>
+        <Text style={styles.title}>Set up your{"\n"}shopping profile</Text>
+        <Text style={styles.subtitle}>
+          Register once — we use this number for OTP login and this address at checkout.
+        </Text>
+
         <View style={styles.form}>
-          <Label text="Your name" />
-          <TextInput
+          <Field
+            label="Your name"
             autoCapitalize="words"
             onChangeText={setName}
             placeholder="Mohammed"
-            placeholderTextColor={colors.placeholder}
-            style={styles.input}
             value={name}
           />
-
-          <Label text="Email address" />
-          <TextInput
+          <Field
+            label="Email address"
             autoCapitalize="none"
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="name@example.com"
-            placeholderTextColor={colors.placeholder}
-            style={styles.input}
             value={email}
           />
 
-          <Label text="Mobile number for OTP login" />
+          <Text style={styles.label}>Mobile number for OTP login</Text>
           <View style={styles.phoneField}>
             <Text style={styles.countryCode}>+91</Text>
             <TextInput
@@ -106,62 +105,61 @@ export function CustomerOnboardingScreen({
               maxLength={10}
               onChangeText={setPhone}
               placeholder="98765 43210"
-              placeholderTextColor={colors.placeholder}
+              placeholderTextColor={colors.faint}
               style={styles.phoneInput}
               value={phone}
             />
           </View>
 
-          <Label text="Default delivery address" />
+          <Text style={styles.label}>Default delivery address</Text>
           <TextInput
             multiline
             onChangeText={setAddress}
             placeholder="Building, street, area, landmark"
-            placeholderTextColor={colors.placeholder}
+            placeholderTextColor={colors.faint}
             style={[styles.input, styles.addressInput]}
             textAlignVertical="top"
             value={address}
           />
 
-          <Label text="What do you buy most?" />
+          <Text style={styles.label}>What do you buy most?</Text>
           <View style={styles.preferenceGrid}>
-            {preferences.map((item) => {
-              const selected = item === preference;
-
-              return (
-                <Pressable
-                  key={item}
-                  onPress={() => setPreference(item)}
-                  style={[styles.preferenceButton, selected && styles.preferenceActive]}
-                >
-                  <Text
-                    style={[
-                      styles.preferenceText,
-                      selected && styles.preferenceTextActive
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {preferences.map((item) => (
+              <Chip
+                key={item}
+                active={item === preference}
+                label={item}
+                onPress={() => setPreference(item)}
+              />
+            ))}
           </View>
 
-          <Pressable
-            disabled={!canContinue}
-            onPress={() =>
-              onComplete({
-                address: address.trim(),
-                email: email.trim().toLowerCase(),
-                name: name.trim(),
-                phone: phoneDigits,
-                preference
-              })
-            }
-            style={[styles.primaryButton, !canContinue && styles.disabledButton]}
-          >
-            <Text style={styles.primaryButtonText}>Create profile</Text>
-          </Pressable>
+          <Button
+            disabled={!canContinue || isSubmitting}
+            label={isSubmitting ? "Creating..." : "Create profile"}
+            onPress={async () => {
+              try {
+                setError("");
+                setIsSubmitting(true);
+                await onComplete({
+                  address: address.trim(),
+                  email: email.trim().toLowerCase(),
+                  name: name.trim(),
+                  phone: phoneDigits,
+                  preference
+                });
+              } catch (profileError) {
+                setError(
+                  profileError instanceof Error
+                    ? profileError.message
+                    : "Could not create profile. Please try again."
+                );
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+          />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Pressable onPress={onLogin} style={styles.loginButton}>
             <Text style={styles.loginButtonText}>Already registered? Login</Text>
           </Pressable>
@@ -171,165 +169,142 @@ export function CustomerOnboardingScreen({
   );
 }
 
-function Label({ text }: { text: string }) {
-  return <Text style={styles.label}>{text}</Text>;
+function Field({
+  label,
+  ...inputProps
+}: {
+  label: string;
+} & ComponentProps<typeof TextInput>) {
+  return (
+    <>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput placeholderTextColor={colors.faint} style={styles.input} {...inputProps} />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
-  keyboardView: {
+  flex: {
     flex: 1,
     backgroundColor: colors.background
   },
   container: {
     flexGrow: 1,
-    justifyContent: "space-between",
-    padding: 22,
+    paddingHorizontal: 22,
+    paddingBottom: 36,
     backgroundColor: colors.background
   },
   hero: {
-    paddingTop: 12,
-    marginBottom: 24
-  },
-  logoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 22
+    justifyContent: "space-between"
   },
   logo: {
-    width: 56,
-    height: 56,
+    width: 54,
+    height: 54,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 16,
-    backgroundColor: colors.orange
+    borderRadius: radius.md,
+    backgroundColor: colors.primary
+  },
+  heroArt: {
+    width: 96,
+    height: 96
   },
   brand: {
-    color: colors.ink,
-    fontSize: 20,
-    fontWeight: "900"
-  },
-  eyebrow: {
-    color: colors.green,
-    fontSize: 12,
-    fontWeight: "900"
+    color: colors.primaryDark,
+    fontFamily: fonts.extrabold,
+    fontSize: 13,
+    letterSpacing: 2,
+    marginTop: 12
   },
   title: {
     color: colors.ink,
-    fontSize: 34,
-    fontWeight: "900",
-    lineHeight: 39,
-    marginBottom: 10
+    fontFamily: fonts.extrabold,
+    fontSize: 32,
+    lineHeight: 36,
+    marginTop: 6
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 15,
-    fontWeight: "700",
-    lineHeight: 22
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 10,
+    marginBottom: 22
   },
   form: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.white,
-    padding: 16
+    padding: 18
   },
   label: {
     color: colors.ink,
+    fontFamily: fonts.bold,
     fontSize: 13,
-    fontWeight: "900",
     marginBottom: 8
   },
   input: {
-    minHeight: 50,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.panel,
+    minHeight: 52,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
     color: colors.ink,
+    fontFamily: fonts.semibold,
     fontSize: 15,
-    fontWeight: "800",
-    paddingHorizontal: 13,
-    marginBottom: 14
+    paddingHorizontal: 14,
+    marginBottom: 16
   },
   phoneField: {
-    height: 50,
+    height: 52,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.panel,
-    marginBottom: 14,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+    marginBottom: 16,
     overflow: "hidden"
   },
   countryCode: {
-    paddingHorizontal: 13,
+    paddingHorizontal: 14,
     color: colors.ink,
-    fontSize: 15,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 15
   },
   phoneInput: {
     flex: 1,
     height: "100%",
     color: colors.ink,
-    fontSize: 15,
-    fontWeight: "800"
+    fontFamily: fonts.semibold,
+    fontSize: 15
   },
   addressInput: {
     minHeight: 92,
-    paddingTop: 13
+    paddingTop: 14
   },
   preferenceGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 16
-  },
-  preferenceButton: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.orangeSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  preferenceActive: {
-    borderColor: colors.green,
-    backgroundColor: colors.greenSoft
-  },
-  preferenceText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900"
-  },
-  preferenceTextActive: {
-    color: colors.green
-  },
-  primaryButton: {
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: colors.green
-  },
-  disabledButton: {
-    backgroundColor: "#a9b5aa"
-  },
-  primaryButtonText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: "900"
+    marginBottom: 22
   },
   loginButton: {
     minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10
+    marginTop: 12
   },
   loginButtonText: {
-    color: colors.green,
-    fontSize: 14,
-    fontWeight: "900"
+    color: colors.primaryDark,
+    fontFamily: fonts.bold,
+    fontSize: 14
+  },
+  errorText: {
+    color: colors.danger,
+    fontFamily: fonts.semibold,
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 10,
+    textAlign: "center"
   }
 });

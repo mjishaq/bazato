@@ -1,9 +1,20 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { Product } from "../data/catalog";
-import type { Store } from "../data/catalog";
+import { Button, IconButton, Screen } from "../components/ui";
+import type { Product, Store } from "../data/catalog";
+import { categoryImage, illustrations } from "../theme/assets";
 import { colors } from "../theme/colors";
+import { fonts, radius, shadow } from "../theme/typography";
 import type { getCartSummary } from "../utils/cart";
 import { formatMoney } from "../utils/cart";
 
@@ -28,431 +39,449 @@ export function CartScreen({
   products,
   selectedShop
 }: CartScreenProps) {
+  const insets = useSafeAreaInsets();
+  const isEmpty = cartSummary.lines.length === 0;
   const addOns = products.filter(
     (product) => !cartSummary.lines.some((line) => line.product.id === product.id)
   );
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Pressable onPress={onBack}>
-            <Text style={styles.backText}>Back</Text>
-          </Pressable>
-          <Text style={styles.title}>Cart</Text>
-          <Pressable onPress={onClear}>
-            <Text style={styles.clearText}>Clear</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.deliveryCard}>
-          <MaterialCommunityIcons color={colors.orange} name="bike-fast" size={24} />
-          <Text style={styles.deliveryTitle}>
-            {selectedShop?.name ?? "Selected shop"} delivers in {selectedShop?.eta ?? "15-20 min"}
-          </Text>
-          <Text style={styles.deliveryText}>
-            COD order - shop is {selectedShop?.distance ?? "nearby"}
-          </Text>
-        </View>
-
-        {cartSummary.lines.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Your cart is empty</Text>
-            <Text style={styles.emptyText}>
-              Add essentials from {selectedShop?.name ?? "this shop"} to checkout.
-            </Text>
+    <Screen
+      scroll
+      contentStyle={styles.content}
+      overlay={
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 14 }]}>
+          <View>
+            <Text style={styles.barCaption}>Total payable</Text>
+            <Text style={styles.barTotal}>{formatMoney(cartSummary.total)}</Text>
           </View>
-        ) : (
-          <View style={styles.list}>
-            {cartSummary.lines.map((line) => (
-              <View key={line.product.id} style={styles.cartRow}>
-                <View style={styles.itemIcon}>
-                  <MaterialCommunityIcons
-                    color={colors.orange}
-                    name="shopping-outline"
-                    size={22}
-                  />
-                </View>
-                <View style={styles.itemCopy}>
-                  <Text style={styles.itemName}>{line.product.name}</Text>
-                  <Text style={styles.itemMeta}>{line.product.unit}</Text>
-                  <Text style={styles.itemPrice}>{formatMoney(line.product.price)}</Text>
-                </View>
-                <View style={styles.qty}>
-                  <Pressable onPress={() => onRemove(line.product.id)} style={styles.qtyButton}>
-                    <Text style={styles.qtyText}>-</Text>
-                  </Pressable>
-                  <Text style={styles.qtyCount}>{line.quantity}</Text>
-                  <Pressable onPress={() => onAdd(line.product.id)} style={styles.qtyButton}>
-                    <Text style={styles.qtyText}>+</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <View style={styles.noteCard}>
-          <Text style={styles.noteLabel}>Delivery note</Text>
-          <TextInput
-            placeholder="Example: call before arriving"
-            placeholderTextColor={colors.placeholder}
-            style={styles.noteInput}
+          <Button
+            disabled={isEmpty}
+            icon="arrow-right"
+            label="Checkout"
+            onPress={onCheckout}
+            style={styles.barButton}
           />
         </View>
+      }
+    >
+      <View style={styles.header}>
+        <IconButton icon="chevron-left" onPress={onBack} />
+        <Text style={styles.title}>Your cart</Text>
+        {!isEmpty ? (
+          <Pressable onPress={onClear}>
+            <Text style={styles.clear}>Clear</Text>
+          </Pressable>
+        ) : (
+          <View style={{ width: 46 }} />
+        )}
+      </View>
 
+      <View style={styles.delivery}>
+        <Image resizeMode="contain" source={illustrations.scooter} style={styles.deliveryImage} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.deliveryTitle}>
+            {selectedShop?.name ?? "Selected shop"} · {selectedShop?.eta ?? "15–20 min"}
+          </Text>
+          <Text style={styles.deliveryText}>
+            Cash on delivery · shop is {selectedShop?.distance ?? "nearby"} away
+          </Text>
+        </View>
+      </View>
+
+      {isEmpty ? (
+        <View style={styles.emptyCard}>
+          <Image resizeMode="contain" source={illustrations.cloche} style={styles.emptyImage} />
+          <Text style={styles.emptyTitle}>Your cart is empty</Text>
+          <Text style={styles.emptyText}>
+            Add essentials from {selectedShop?.name ?? "this shop"} to get started.
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.list}>
+          {cartSummary.lines.map((line) => (
+            <View key={line.product.id} style={styles.row}>
+              <View style={styles.thumb}>
+                <Image
+                  resizeMode="contain"
+                  source={
+                    line.product.imageUrl
+                      ? { uri: line.product.imageUrl }
+                      : categoryImage(line.product.category)
+                  }
+                  style={styles.thumbImage}
+                />
+              </View>
+              <View style={styles.rowCopy}>
+                <Text numberOfLines={1} style={styles.itemName}>
+                  {line.product.name}
+                </Text>
+                <Text style={styles.itemMeta}>{line.product.unit}</Text>
+                <Text style={styles.itemPrice}>{formatMoney(line.product.price)}</Text>
+              </View>
+              <View style={styles.qty}>
+                <Pressable hitSlop={6} onPress={() => onRemove(line.product.id)} style={styles.qtyButton}>
+                  <MaterialCommunityIcons color={colors.white} name="minus" size={15} />
+                </Pressable>
+                <Text style={styles.qtyCount}>{line.quantity}</Text>
+                <Pressable hitSlop={6} onPress={() => onAdd(line.product.id)} style={styles.qtyButton}>
+                  <MaterialCommunityIcons color={colors.white} name="plus" size={15} />
+                </Pressable>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.noteCard}>
+        <Text style={styles.cardLabel}>Delivery note</Text>
+        <TextInput
+          placeholder="e.g. call before arriving"
+          placeholderTextColor={colors.faint}
+          style={styles.noteInput}
+        />
+      </View>
+
+      {addOns.length > 0 ? (
         <View style={styles.addOnCard}>
-          <Text style={styles.addOnTitle}>Last minute add-ons</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {addOns.slice(0, 4).map((product) => (
+          <Text style={styles.cardLabel}>Add a little more</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.addOnRow}>
+            {addOns.slice(0, 5).map((product) => (
               <View key={product.id} style={styles.addOnTile}>
-                <Text style={styles.addOnIcon}>{product.name[0]}</Text>
+                <View style={styles.addOnImageBox}>
+                  <Image
+                    resizeMode="contain"
+                    source={product.imageUrl ? { uri: product.imageUrl } : categoryImage(product.category)}
+                    style={styles.addOnImage}
+                  />
+                </View>
                 <Text numberOfLines={1} style={styles.addOnName}>
                   {product.name}
                 </Text>
                 <Text style={styles.addOnPrice}>{formatMoney(product.price)}</Text>
                 <Pressable onPress={() => onAdd(product.id)} style={styles.addOnButton}>
-                  <Text style={styles.addOnButtonText}>ADD</Text>
+                  <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={18} />
                 </Pressable>
               </View>
             ))}
           </ScrollView>
         </View>
+      ) : null}
 
-        <View style={styles.billCard}>
-          <BillLine label="Items" value={formatMoney(cartSummary.subtotal)} />
-          <BillLine label="Delivery" value={formatMoney(cartSummary.deliveryFee)} />
-          <BillLine label="You save" value={formatMoney(cartSummary.savings)} />
-          <View style={styles.totalLine}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{formatMoney(cartSummary.total)}</Text>
-          </View>
+      <View style={styles.billCard}>
+        <BillLine label="Item total" value={formatMoney(cartSummary.subtotal)} />
+        <BillLine label="Delivery fee" value={formatMoney(cartSummary.deliveryFee)} />
+        <BillLine label="You save" value={`- ${formatMoney(cartSummary.savings)}`} highlight />
+        <View style={styles.totalLine}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>{formatMoney(cartSummary.total)}</Text>
         </View>
-      </ScrollView>
-
-      <View style={styles.checkoutBar}>
-        <View>
-          <Text style={styles.checkoutTotal}>{formatMoney(cartSummary.total)}</Text>
-          <Text style={styles.checkoutSub}>{cartSummary.itemCount} items</Text>
-        </View>
-        <Pressable
-          disabled={cartSummary.itemCount === 0}
-          onPress={onCheckout}
-          style={[
-            styles.checkoutButton,
-            cartSummary.itemCount === 0 && styles.disabledButton
-          ]}
-        >
-          <Text style={styles.checkoutButtonText}>Proceed</Text>
-        </Pressable>
       </View>
-    </View>
+    </Screen>
   );
 }
 
-function BillLine({ label, value }: { label: string; value: string }) {
+function BillLine({
+  label,
+  value,
+  highlight
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
     <View style={styles.billLine}>
       <Text style={styles.billLabel}>{label}</Text>
-      <Text style={styles.billValue}>{value}</Text>
+      <Text style={[styles.billValue, highlight && { color: colors.success }]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
   content: {
-    padding: 20,
-    paddingBottom: 108
+    paddingHorizontal: 20,
+    paddingBottom: 150
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 8,
-    marginBottom: 16
-  },
-  backText: {
-    color: colors.green,
-    fontSize: 14,
-    fontWeight: "900"
+    marginBottom: 18
   },
   title: {
     color: colors.ink,
-    fontSize: 24,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 24
   },
-  clearText: {
-    color: colors.orange,
-    fontSize: 13,
-    fontWeight: "900"
+  clear: {
+    color: colors.danger,
+    fontFamily: fonts.bold,
+    fontSize: 14
   },
-  deliveryCard: {
-    borderRadius: 8,
-    backgroundColor: colors.orangeSoft,
-    padding: 14,
-    marginBottom: 12,
-    gap: 4
-  },
-  deliveryTitle: {
-    color: colors.orange,
-    fontSize: 14,
-    fontWeight: "900",
-    marginBottom: 3
-  },
-  deliveryText: {
-    color: colors.ink,
-    fontSize: 12,
-    fontWeight: "700"
-  },
-  emptyCard: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 22,
-    backgroundColor: colors.white,
-    padding: 18,
-    marginBottom: 12
-  },
-  emptyTitle: {
-    color: colors.ink,
-    fontSize: 18,
-    fontWeight: "900"
-  },
-  emptyText: {
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: 4
-  },
-  list: {
-    gap: 10,
-    marginBottom: 12
-  },
-  cartRow: {
+  delivery: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryGlow,
+    padding: 14,
+    marginBottom: 16
+  },
+  deliveryImage: {
+    width: 56,
+    height: 56
+  },
+  deliveryTitle: {
+    color: colors.ink,
+    fontFamily: fonts.extrabold,
+    fontSize: 14
+  },
+  deliveryText: {
+    color: colors.inkSoft,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    marginTop: 2
+  },
+  emptyCard: {
+    alignItems: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 8,
-    backgroundColor: colors.white,
+    padding: 26,
+    marginBottom: 16
+  },
+  emptyImage: {
+    width: 120,
+    height: 120,
+    marginBottom: 8
+  },
+  emptyTitle: {
+    color: colors.ink,
+    fontFamily: fonts.extrabold,
+    fontSize: 18
+  },
+  emptyText: {
+    color: colors.muted,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 4
+  },
+  list: {
+    gap: 12,
+    marginBottom: 16
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
     padding: 12
   },
-  itemIcon: {
-    width: 44,
-    height: 44,
+  thumb: {
+    width: 58,
+    height: 58,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 14,
-    backgroundColor: colors.orangeSoft
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
+    overflow: "hidden"
   },
-  itemCopy: {
+  thumbImage: {
+    width: "84%",
+    height: "84%"
+  },
+  rowCopy: {
     flex: 1
   },
   itemName: {
     color: colors.ink,
-    fontSize: 14,
-    fontWeight: "900"
+    fontFamily: fonts.bold,
+    fontSize: 15
   },
   itemMeta: {
     color: colors.muted,
-    fontSize: 11,
-    fontWeight: "700",
+    fontFamily: fonts.medium,
+    fontSize: 11.5,
     marginTop: 2
   },
   itemPrice: {
     color: colors.ink,
-    fontSize: 12,
-    fontWeight: "900",
+    fontFamily: fonts.extrabold,
+    fontSize: 13.5,
     marginTop: 4
   },
   qty: {
-    height: 32,
+    height: 36,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
-    backgroundColor: colors.green
+    borderRadius: radius.md,
+    backgroundColor: colors.ink,
+    paddingHorizontal: 2
   },
   qtyButton: {
-    width: 28,
-    height: 32,
+    width: 30,
+    height: 36,
     alignItems: "center",
     justifyContent: "center"
   },
-  qtyText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "900"
-  },
   qtyCount: {
     color: colors.white,
+    fontFamily: fonts.bold,
     fontSize: 13,
-    fontWeight: "900",
-    minWidth: 18,
+    minWidth: 16,
     textAlign: "center"
   },
   noteCard: {
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 18,
-    backgroundColor: colors.white,
     padding: 14,
-    marginBottom: 12
+    marginBottom: 14
   },
-  noteLabel: {
+  cardLabel: {
     color: colors.ink,
-    fontSize: 13,
-    fontWeight: "900",
-    marginBottom: 8
+    fontFamily: fonts.extrabold,
+    fontSize: 14,
+    marginBottom: 12
   },
   noteInput: {
-    height: 42,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 18,
+    minHeight: 44,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
     color: colors.ink,
-    paddingHorizontal: 12
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    paddingHorizontal: 14
   },
   addOnCard: {
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 16,
-    backgroundColor: colors.white,
     padding: 14,
-    marginBottom: 12
+    marginBottom: 14
   },
-  addOnTitle: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: "900",
-    marginBottom: 12
+  addOnRow: {
+    gap: 12,
+    paddingRight: 4
   },
   addOnTile: {
-    width: 100,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 16,
-    padding: 10,
-    marginRight: 10
+    width: 110,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    padding: 10
   },
-  addOnIcon: {
-    height: 38,
-    borderRadius: 16,
+  addOnImageBox: {
+    height: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
     overflow: "hidden",
-    backgroundColor: colors.panel,
-    color: colors.green,
-    textAlign: "center",
-    textAlignVertical: "center",
-    fontSize: 18,
-    fontWeight: "900",
     marginBottom: 8
+  },
+  addOnImage: {
+    width: "80%",
+    height: "80%"
   },
   addOnName: {
     color: colors.ink,
-    fontSize: 11,
-    fontWeight: "900"
+    fontFamily: fonts.bold,
+    fontSize: 12.5
   },
   addOnPrice: {
     color: colors.muted,
-    fontSize: 10,
-    fontWeight: "800",
-    marginTop: 3
+    fontFamily: fonts.semibold,
+    fontSize: 11.5,
+    marginTop: 2
   },
   addOnButton: {
-    height: 28,
+    position: "absolute",
+    right: 8,
+    bottom: 8,
+    width: 30,
+    height: 30,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.green,
-    borderRadius: 18,
-    marginTop: 8
-  },
-  addOnButtonText: {
-    color: colors.green,
-    fontSize: 11,
-    fontWeight: "900"
+    borderRadius: 15,
+    backgroundColor: colors.primary
   },
   billCard: {
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 16,
-    backgroundColor: colors.white,
-    padding: 14
+    padding: 16
   },
   billLine: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8
+    marginBottom: 10
   },
   billLabel: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: "700"
+    fontFamily: fonts.medium,
+    fontSize: 13.5
   },
   billValue: {
     color: colors.ink,
-    fontSize: 13,
-    fontWeight: "900"
+    fontFamily: fonts.bold,
+    fontSize: 13.5
   },
   totalLine: {
     flexDirection: "row",
     justifyContent: "space-between",
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    paddingTop: 10,
+    paddingTop: 12,
     marginTop: 2
   },
   totalLabel: {
     color: colors.ink,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 17
   },
   totalValue: {
     color: colors.ink,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 17
   },
-  checkoutBar: {
+  bottomBar: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: 76,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    backgroundColor: colors.white,
-    paddingHorizontal: 20
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    ...shadow.float
   },
-  checkoutTotal: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  checkoutSub: {
+  barCaption: {
     color: colors.muted,
-    fontSize: 11,
-    fontWeight: "800",
+    fontFamily: fonts.semibold,
+    fontSize: 11.5
+  },
+  barTotal: {
+    color: colors.ink,
+    fontFamily: fonts.extrabold,
+    fontSize: 22,
     marginTop: 2
   },
-  checkoutButton: {
-    minWidth: 132,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: colors.green
-  },
-  disabledButton: {
-    backgroundColor: "#a9b5aa"
-  },
-  checkoutButtonText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: "900"
+  barButton: {
+    minWidth: 168
   }
 });

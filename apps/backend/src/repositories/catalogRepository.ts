@@ -38,6 +38,8 @@ export interface CatalogRepository {
 }
 
 export class MemoryCatalogRepository implements CatalogRepository {
+  private readonly shopOwnerPhones = new Map<string, string>();
+
   async listShops(limit: number) {
     return shops
       .slice()
@@ -49,8 +51,16 @@ export class MemoryCatalogRepository implements CatalogRepository {
     return shops.find((shop) => shop.id === shopId) ?? null;
   }
 
-  async getShopByOwnerPhone() {
-    return shops[0] ?? null;
+  async getShopByOwnerPhone(phone: string) {
+    const shopId = Array.from(this.shopOwnerPhones.entries()).find(
+      ([, ownerPhone]) => ownerPhone === phone
+    )?.[0];
+
+    if (!shopId) {
+      return null;
+    }
+
+    return this.getShop(shopId);
   }
 
   async listProducts(filters: ProductFilters = {}) {
@@ -94,6 +104,8 @@ export class MemoryCatalogRepository implements CatalogRepository {
     } else {
       shops.push(shop);
     }
+
+    this.shopOwnerPhones.set(id, input.ownerPhone);
 
     return shop;
   }

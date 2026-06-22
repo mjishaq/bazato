@@ -7,7 +7,7 @@
     "scheme": "bazzato",
     "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#18211c",
+      "backgroundColor": "#FFC42E",
       "resizeMode": "contain"
     },
     "ios": {

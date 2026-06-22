@@ -1,9 +1,18 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  Platform,
+  StyleSheet,
+  View,
+  useWindowDimensions
+} from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import { fontAssets } from "./src/theme/typography";
 
 import { getNearbyShops, getShopProducts } from "./src/api/catalog";
 import { createCodOrder, getOrder, getOrders } from "./src/api/orders";
@@ -20,6 +29,7 @@ import {
   CustomerOnboardingScreen,
   type CustomerOnboardingProfile
 } from "./src/screens/CustomerOnboardingScreen";
+import { registerCustomer } from "./src/api/auth";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LocationPermissionScreen } from "./src/screens/LocationPermissionScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
@@ -51,6 +61,57 @@ type RootStackParamList = Record<AppScreen, undefined>;
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const onboardingStorageKey = "bazzato.customer.onboarding";
 
+const PHONE_WIDTH = 412;
+const PHONE_MAX_HEIGHT = 896;
+
+function PhoneFrame({ children }: { children: ReactNode }) {
+  const { width, height } = useWindowDimensions();
+
+  // On native, or on a narrow (phone-sized) browser viewport, render full-bleed.
+  if (Platform.OS !== "web" || width <= 480) {
+    return <View style={frameStyles.fill}>{children}</View>;
+  }
+
+  const frameHeight = Math.min(height - 48, PHONE_MAX_HEIGHT);
+
+  return (
+    <View style={frameStyles.backdrop}>
+      <View
+        style={[
+          frameStyles.device,
+          { width: PHONE_WIDTH, height: frameHeight }
+        ]}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
+
+const frameStyles = StyleSheet.create({
+  fill: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  backdrop: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#16130D",
+    backgroundImage:
+      "radial-gradient(120% 120% at 50% 0%, #2A2620 0%, #16130D 60%)"
+  } as object,
+  device: {
+    maxWidth: "100%",
+    backgroundColor: colors.background,
+    borderRadius: 40,
+    overflow: "hidden",
+    borderWidth: 10,
+    borderColor: "#0B0907",
+    boxShadow: "0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)"
+  } as object
+});
+
 function isCompleteCustomerProfile(
   profile: Partial<CustomerOnboardingProfile> | null
 ): profile is CustomerOnboardingProfile {
@@ -64,6 +125,7 @@ function isCompleteCustomerProfile(
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts(fontAssets);
   const [cart, setCart] = useState<CartQuantities>({});
   const [order, setOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -171,7 +233,8 @@ export default function App() {
     }));
   };
 
-  const completeOnboarding = (profile: CustomerOnboardingProfile) => {
+  const completeOnboarding = async (profile: CustomerOnboardingProfile) => {
+    await registerCustomer(profile);
     setCustomerProfile(profile);
     setDeliveryAddress(profile.address);
     void AsyncStorage.setItem(onboardingStorageKey, JSON.stringify(profile)).catch(
@@ -256,11 +319,12 @@ export default function App() {
     navigate("store");
   };
 
-  if (!hasLoadedOnboarding) {
+  if (!hasLoadedOnboarding || !fontsLoaded) {
     return null;
   }
 
   return (
+    <PhoneFrame>
     <SafeAreaProvider>
       <NavigationContainer>
         <StatusBar style="dark" />
@@ -275,8 +339,8 @@ export default function App() {
           <Stack.Screen name="onboarding">
             {({ navigation }) => (
               <CustomerOnboardingScreen
-                onComplete={(profile) => {
-                  completeOnboarding(profile);
+                onComplete={async (profile) => {
+                  await completeOnboarding(profile);
                   navigation.replace("login");
                 }}
                 onLogin={() => navigation.replace("login")}
@@ -420,5 +484,6 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
+    </PhoneFrame>
   );
 }

@@ -1,7 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../theme/colors";
+import { fonts, radius, shadow } from "../theme/typography";
 
 export type BottomNavTab = "home" | "search" | "orders" | "profile";
 
@@ -20,8 +22,8 @@ const tabs: Array<{
 }> = [
   { key: "home", label: "Home", icon: "home-variant" },
   { key: "search", label: "Search", icon: "magnify" },
-  { key: "orders", label: "Orders", icon: "clipboard-text-outline" },
-  { key: "profile", label: "Profile", icon: "account-circle-outline" }
+  { key: "orders", label: "Orders", icon: "receipt" },
+  { key: "profile", label: "Profile", icon: "account" }
 ];
 
 export function BottomNav({
@@ -31,6 +33,7 @@ export function BottomNav({
   onProfile,
   onSearch
 }: BottomNavProps) {
+  const insets = useSafeAreaInsets();
   const handlers: Record<BottomNavTab, () => void> = {
     home: onHome,
     orders: onOrders,
@@ -39,57 +42,67 @@ export function BottomNav({
   };
 
   return (
-    <View style={styles.bottomNav}>
-      {tabs.map((tab) => {
-        const active = tab.key === activeTab;
+    <View style={[styles.wrap, { bottom: insets.bottom + 12 }]} pointerEvents="box-none">
+      <View style={styles.bar}>
+        {tabs.map((tab) => {
+          const active = tab.key === activeTab;
 
-        return (
-          <Pressable
-            accessibilityRole="button"
-            key={tab.key}
-            onPress={handlers[tab.key]}
-            style={styles.navItem}
-          >
-            <MaterialCommunityIcons
-              color={active ? colors.orange : colors.muted}
-              name={tab.icon}
-              size={20}
-            />
-            <Text style={[styles.navLabel, active && styles.navLabelActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={tab.key}
+              onPress={handlers[tab.key]}
+              style={[styles.item, active && styles.itemActive]}
+            >
+              <MaterialCommunityIcons
+                color={active ? colors.onPrimary : "rgba(255,255,255,0.62)"}
+                name={tab.icon}
+                size={21}
+              />
+              {active ? <Text style={styles.label}>{tab.label}</Text> : null}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bottomNav: {
+  wrap: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 72,
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.white
+    left: 18,
+    right: 18,
+    alignItems: "center"
   },
-  navItem: {
+  bar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    height: 64,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
+    ...shadow.float
+  },
+  item: {
     flex: 1,
+    height: 48,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 3
+    gap: 7,
+    borderRadius: radius.pill,
+    marginHorizontal: 2
   },
-  navLabel: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: "800"
+  itemActive: {
+    flex: 1.5,
+    backgroundColor: colors.primary
   },
-  navLabelActive: {
-    color: colors.green,
-    fontWeight: "900"
+  label: {
+    color: colors.onPrimary,
+    fontFamily: fonts.extrabold,
+    fontSize: 13
   }
 });

@@ -1,6 +1,6 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,9 +9,13 @@ import {
   TextInput,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Button } from "../components/ui";
 import { phoneAuthGateway, type AuthSession } from "../services/authGateway";
+import { illustrations } from "../theme/assets";
 import { colors } from "../theme/colors";
+import { fonts, radius, shadow } from "../theme/typography";
 
 type LoginStep = "phone" | "otp";
 
@@ -26,6 +30,7 @@ export function LoginScreen({
   lockPhone = false,
   onComplete
 }: LoginScreenProps) {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<LoginStep>("phone");
   const [phone, setPhone] = useState(initialPhone);
   const [otp, setOtp] = useState("");
@@ -45,9 +50,7 @@ export function LoginScreen({
     if (resendIn === 0) {
       return;
     }
-
     const timer = setTimeout(() => setResendIn((value) => value - 1), 1000);
-
     return () => clearTimeout(timer);
   }, [resendIn]);
 
@@ -55,7 +58,6 @@ export function LoginScreen({
     if (!canRequestOtp) {
       return;
     }
-
     try {
       setError("");
       setIsSubmitting(true);
@@ -78,7 +80,6 @@ export function LoginScreen({
     if (!canVerifyOtp) {
       return;
     }
-
     try {
       setError("");
       setIsSubmitting(true);
@@ -97,17 +98,15 @@ export function LoginScreen({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.keyboardView}
+      style={styles.flex}
     >
-      <View style={styles.container}>
-        <View style={styles.hero}>
-          <View style={styles.logo}>
-            <MaterialCommunityIcons color={colors.white} name="shopping" size={28} />
-          </View>
-          <Text style={styles.brand}>Bazzato</Text>
+      <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
+        <View>
+          <Image resizeMode="contain" source={illustrations.scooter} style={styles.art} />
+          <Text style={styles.brand}>BAZZATO</Text>
           <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>
-            Sign in with the mobile number registered during onboarding.
+            Sign in with the mobile number you registered during onboarding.
           </Text>
         </View>
 
@@ -124,31 +123,22 @@ export function LoginScreen({
                 maxLength={10}
                 onChangeText={setPhone}
                 placeholder="98765 43210"
-                placeholderTextColor={colors.placeholder}
-                style={[styles.input, lockPhone && styles.lockedInput]}
+                placeholderTextColor={colors.faint}
+                style={[styles.phoneInput, lockPhone && { color: colors.muted }]}
                 value={phone}
               />
             </View>
-            <Pressable
+            <Button
               disabled={!canRequestOtp || isSubmitting}
+              label={isSubmitting ? "Sending…" : "Send OTP"}
               onPress={requestOtp}
-              style={[
-                styles.primaryButton,
-                (!canRequestOtp || isSubmitting) && styles.disabledButton
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSubmitting ? "Sending..." : "Send OTP"}
-              </Text>
-            </Pressable>
+            />
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <Text style={styles.helpText}>
               We will send a 4-digit code to your onboarded mobile number.
             </Text>
           </View>
-        ) : null}
-
-        {step === "otp" ? (
+        ) : (
           <View style={styles.card}>
             <View style={styles.rowBetween}>
               <View>
@@ -166,158 +156,123 @@ export function LoginScreen({
               maxLength={4}
               onChangeText={setOtp}
               placeholder="0000"
-              placeholderTextColor={colors.placeholder}
+              placeholderTextColor={colors.faint}
               style={styles.otpInput}
               value={otp}
             />
-            <Pressable
+            <Button
               disabled={!canVerifyOtp || isSubmitting}
+              label={isSubmitting ? "Verifying…" : "Verify & continue"}
               onPress={handleVerifyOtp}
-              style={[
-                styles.primaryButton,
-                (!canVerifyOtp || isSubmitting) && styles.disabledButton
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSubmitting ? "Verifying..." : "Verify and continue"}
-              </Text>
-            </Pressable>
+            />
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <Pressable disabled={resendIn > 0} onPress={requestOtp}>
-              <Text style={[styles.resendText, resendIn > 0 && styles.disabledText]}>
+              <Text style={[styles.resendText, resendIn > 0 && { color: colors.faint }]}>
                 {resendIn > 0 ? `Resend OTP in ${resendIn}s` : "Resend OTP"}
               </Text>
             </Pressable>
           </View>
-        ) : null}
+        )}
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardView: {
-    flex: 1
+  flex: {
+    flex: 1,
+    backgroundColor: colors.background
   },
   container: {
     flex: 1,
     justifyContent: "space-between",
-    padding: 24,
+    paddingHorizontal: 24,
     backgroundColor: colors.background
   },
-  hero: {
-    paddingTop: 26
-  },
-  logo: {
-    width: 56,
-    height: 56,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-    backgroundColor: colors.orange,
-    marginBottom: 18
+  art: {
+    width: 120,
+    height: 120,
+    marginBottom: 8,
+    marginLeft: -8
   },
   brand: {
-    color: colors.orange,
-    fontSize: 14,
-    fontWeight: "900",
+    color: colors.primaryDark,
+    fontFamily: fonts.extrabold,
+    fontSize: 13,
+    letterSpacing: 2,
     marginBottom: 8
   },
   title: {
     color: colors.ink,
+    fontFamily: fonts.extrabold,
     fontSize: 38,
-    fontWeight: "900",
     lineHeight: 42,
     marginBottom: 12
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 16,
-    lineHeight: 24
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    lineHeight: 22
   },
   card: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 22,
-    backgroundColor: colors.white,
     padding: 18,
-    shadowColor: "#1e2a24",
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.12,
-    shadowRadius: 34,
-    elevation: 5
+    ...shadow.card
   },
   label: {
     color: colors.ink,
+    fontFamily: fonts.bold,
     fontSize: 13,
-    fontWeight: "900",
     marginBottom: 8
   },
   phoneField: {
-    height: 54,
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 16,
-    backgroundColor: colors.panel,
-    marginBottom: 14,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+    marginBottom: 16,
     overflow: "hidden"
   },
   countryCode: {
     paddingHorizontal: 14,
     color: colors.ink,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily: fonts.extrabold,
+    fontSize: 16
   },
-  input: {
+  phoneInput: {
     flex: 1,
     height: "100%",
     color: colors.ink,
-    fontSize: 16,
-    fontWeight: "700"
-  },
-  lockedInput: {
-    color: colors.muted
+    fontFamily: fonts.semibold,
+    fontSize: 16
   },
   otpInput: {
-    height: 62,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 16,
-    backgroundColor: colors.panel,
+    height: 64,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
     color: colors.ink,
+    fontFamily: fonts.extrabold,
     fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: 12,
-    paddingHorizontal: 16,
-    marginBottom: 14
-  },
-  primaryButton: {
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: colors.green
-  },
-  disabledButton: {
-    backgroundColor: "#a9b5aa"
-  },
-  primaryButtonText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: "900"
+    letterSpacing: 14,
+    paddingHorizontal: 18,
+    marginBottom: 16
   },
   helpText: {
     color: colors.muted,
-    fontSize: 12,
+    fontFamily: fonts.medium,
+    fontSize: 12.5,
     lineHeight: 18,
     marginTop: 12
   },
   errorText: {
-    color: colors.magenta,
-    fontSize: 12,
-    fontWeight: "800",
+    color: colors.danger,
+    fontFamily: fonts.semibold,
+    fontSize: 12.5,
     lineHeight: 18,
     marginTop: 10
   },
@@ -330,21 +285,20 @@ const styles = StyleSheet.create({
   },
   mutedText: {
     color: colors.muted,
-    fontSize: 12
+    fontFamily: fonts.medium,
+    fontSize: 12.5,
+    marginTop: 3
   },
   linkText: {
-    color: colors.green,
-    fontSize: 13,
-    fontWeight: "900"
+    color: colors.primaryDark,
+    fontFamily: fonts.bold,
+    fontSize: 13
   },
   resendText: {
-    color: colors.green,
+    color: colors.primaryDark,
+    fontFamily: fonts.bold,
     fontSize: 13,
-    fontWeight: "900",
     textAlign: "center",
-    marginTop: 14
-  },
-  disabledText: {
-    color: "#879084"
+    marginTop: 16
   }
 });

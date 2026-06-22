@@ -6,6 +6,24 @@ export type AuthUser = {
   role: "customer";
 };
 
+export type CustomerRegistration = {
+  address: string;
+  email: string;
+  name: string;
+  phone: string;
+  preference: string;
+};
+
+export async function registerCustomer(profile: CustomerRegistration) {
+  return apiRequest<{ customer: CustomerRegistration & { id: string } }>(
+    "/auth/register",
+    {
+      method: "POST",
+      body: profile
+    }
+  );
+}
+
 export async function requestOtp(phone: string) {
   return apiRequest<{ phone: string; otp: string; message: string }>(
     "/auth/request-otp",
