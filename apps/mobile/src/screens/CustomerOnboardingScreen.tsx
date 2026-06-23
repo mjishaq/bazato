@@ -22,6 +22,7 @@ export type CustomerOnboardingProfile = {
   address: string;
   email: string;
   name: string;
+  otp?: string;
   phone: string;
   preference: string;
 };
@@ -29,21 +30,25 @@ export type CustomerOnboardingProfile = {
 type CustomerOnboardingScreenProps = {
   onComplete: (profile: CustomerOnboardingProfile) => Promise<void> | void;
   onLogin: () => void;
+  onRequestOtp: (phone: string) => Promise<unknown>;
 };
 
 const preferences = ["Groceries", "Fruits", "Bakery", "Snacks"];
 
 export function CustomerOnboardingScreen({
   onComplete,
-  onLogin
+  onLogin,
+  onRequestOtp
 }: CustomerOnboardingScreenProps) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
   const [address, setAddress] = useState("");
   const [preference, setPreference] = useState(preferences[0]);
   const [error, setError] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const phoneDigits = useMemo(() => phone.replace(/\D/g, ""), [phone]);
   const emailValid = useMemo(() => /\S+@\S+\.\S+/.test(email.trim()), [email]);
@@ -53,8 +58,10 @@ export function CustomerOnboardingScreen({
       name.trim().length >= 2 &&
       emailValid &&
       phoneDigits.length >= 10 &&
-      address.trim().length >= 8,
-    [address, emailValid, name, phoneDigits]
+      address.trim().length >= 8 &&
+      isOtpSent &&
+      otp.length === 4,
+    [address, emailValid, isOtpSent, name, otp, phoneDigits]
   );
 
   return (
@@ -103,13 +110,54 @@ export function CustomerOnboardingScreen({
             <TextInput
               keyboardType="phone-pad"
               maxLength={10}
-              onChangeText={setPhone}
+              onChangeText={(value) => {
+                setPhone(value);
+                setOtp("");
+                setIsOtpSent(false);
+              }}
               placeholder="98765 43210"
               placeholderTextColor={colors.faint}
               style={styles.phoneInput}
               value={phone}
             />
           </View>
+          {!isOtpSent ? (
+            <Button
+              disabled={phoneDigits.length < 10 || isSubmitting}
+              label={isSubmitting ? "Sending..." : "Send OTP"}
+              onPress={async () => {
+                try {
+                  setError("");
+                  setIsSubmitting(true);
+                  await onRequestOtp(phoneDigits);
+                  setIsOtpSent(true);
+                } catch (otpError) {
+                  setError(
+                    otpError instanceof Error
+                      ? otpError.message
+                      : "Could not send OTP. Please try again."
+                  );
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+              style={styles.otpButton}
+              variant="ghost"
+            />
+          ) : (
+            <>
+              <Text style={styles.label}>Enter OTP</Text>
+              <TextInput
+                keyboardType="number-pad"
+                maxLength={4}
+                onChangeText={(value) => setOtp(value.replace(/\D/g, ""))}
+                placeholder="1234"
+                placeholderTextColor={colors.faint}
+                style={styles.input}
+                value={otp}
+              />
+            </>
+          )}
 
           <Text style={styles.label}>Default delivery address</Text>
           <TextInput
@@ -145,6 +193,7 @@ export function CustomerOnboardingScreen({
                   address: address.trim(),
                   email: email.trim().toLowerCase(),
                   name: name.trim(),
+                  otp,
                   phone: phoneDigits,
                   preference
                 });
@@ -264,6 +313,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
     marginBottom: 16,
     overflow: "hidden"
+  },
+  otpButton: {
+    marginBottom: 16
   },
   countryCode: {
     paddingHorizontal: 14,

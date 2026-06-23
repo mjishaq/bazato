@@ -18,6 +18,7 @@ export type CustomerRegistration = {
   address: string;
   email: string;
   name: string;
+  otp: string;
   phone: string;
   preference: string;
 };
@@ -28,6 +29,16 @@ export async function registerCustomer(profile: CustomerRegistration) {
     {
       method: "POST",
       body: profile
+    }
+  );
+}
+
+export async function requestRegistrationOtp(phone: string) {
+  return apiRequest<{ phone: string; otp: string; message: string }>(
+    "/auth/register/request-otp",
+    {
+      method: "POST",
+      body: { phone }
     }
   );
 }

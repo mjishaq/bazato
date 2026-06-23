@@ -35,6 +35,26 @@ async function getMockCustomerToken() {
   return verified.token;
 }
 
+async function requestVendorOtp(ownerPhone) {
+  const requested = await requestJson(`${api}/vendor/request-otp`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ ownerPhone })
+  });
+
+  return requested.otp ?? "1234";
+}
+
+async function requestAdminOtp(phone) {
+  const requested = await requestJson(`${api}/vendor/admin/request-otp`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ phone })
+  });
+
+  return requested.otp ?? "1234";
+}
+
 async function waitForRealtimeStatus({ orderId, status, token, vendorToken }) {
   const wsUrl = `${api.replace(/^http/, "ws")}/orders/${encodeURIComponent(
     orderId
@@ -85,11 +105,13 @@ async function waitForRealtimeStatus({ orderId, status, token, vendorToken }) {
 async function main() {
   const health = await requestJson(`${api}/health`);
   const customerToken = await getMockCustomerToken();
+  const adminOtp = await requestAdminOtp(adminPhone);
+  const vendorOtp = await requestVendorOtp(vendorPhone);
 
   const adminLogin = await requestJson(`${api}/vendor/admin/login`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ phone: adminPhone })
+    body: JSON.stringify({ phone: adminPhone, otp: adminOtp })
   });
   const adminSummary = await requestJson(`${api}/vendor/admin/summary`, {
     headers: { Authorization: `Bearer ${adminLogin.token}` }
@@ -98,7 +120,7 @@ async function main() {
   const vendorLogin = await requestJson(`${api}/vendor/login`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ ownerPhone: vendorPhone })
+    body: JSON.stringify({ ownerPhone: vendorPhone, otp: vendorOtp })
   });
   const productPayload = {
     id: "holistic-smoke-orange",

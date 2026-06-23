@@ -23,12 +23,14 @@ type LoginScreenProps = {
   initialPhone?: string;
   lockPhone?: boolean;
   onComplete: (session: AuthSession) => void;
+  onRegister: () => void;
 };
 
 export function LoginScreen({
   initialPhone = "",
   lockPhone = false,
-  onComplete
+  onComplete,
+  onRegister
 }: LoginScreenProps) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<LoginStep>("phone");
@@ -173,6 +175,9 @@ export function LoginScreen({
             </Pressable>
           </View>
         )}
+        <Pressable onPress={onRegister} style={styles.registerButton}>
+          <Text style={styles.registerText}>New customer? Create profile</Text>
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -300,5 +305,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     marginTop: 16
+  },
+  registerButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    marginTop: 14
+  },
+  registerText: {
+    color: colors.primaryDark,
+    fontFamily: fonts.bold,
+    fontSize: 14
   }
 });

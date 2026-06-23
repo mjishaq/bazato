@@ -13,6 +13,7 @@ const customerRegistrationSchema = phoneSchema.extend({
   address: z.string().min(8),
   email: z.string().email(),
   name: z.string().min(2),
+  otp: z.string().length(4),
   preference: z.string().min(1)
 });
 
@@ -28,6 +29,11 @@ authRouter.post("/register", async (req, res) => {
     return;
   }
 
+  if (!(await services.auth.verifyOtpForPhone(parsed.data.phone, parsed.data.otp))) {
+    res.status(401).json({ error: "Invalid OTP" });
+    return;
+  }
+
   const customer = await services.auth.registerCustomer({
     address: parsed.data.address.trim(),
     email: parsed.data.email.trim().toLowerCase(),
@@ -37,6 +43,17 @@ authRouter.post("/register", async (req, res) => {
   });
 
   res.status(201).json({ customer });
+});
+
+authRouter.post("/register/request-otp", async (req, res) => {
+  const parsed = phoneSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid phone is required" });
+    return;
+  }
+
+  res.json(await services.auth.requestOtpForPhone(parsed.data.phone));
 });
 
 authRouter.post("/request-otp", async (req, res) => {

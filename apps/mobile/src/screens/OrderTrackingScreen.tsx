@@ -30,6 +30,11 @@ const steps = [
   { label: "Completed", note: "Delivered — enjoy!" }
 ];
 
+const terminalSteps = {
+  cancelled: { label: "Cancelled", note: "This order was cancelled." },
+  rejected: { label: "Rejected", note: "The shop could not fulfil this order." }
+};
+
 export function OrderTrackingScreen({
   order,
   onHome,
@@ -43,12 +48,29 @@ export function OrderTrackingScreen({
   const itemCount = order?.lines.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
   const shopName = order?.shopName ?? "Selected shop";
   const statusText = order?.status ?? "placed";
+  const terminalStep =
+    order?.status === "rejected"
+      ? terminalSteps.rejected
+      : order?.status === "cancelled"
+        ? terminalSteps.cancelled
+        : null;
+  const isTerminalFailure = Boolean(terminalStep);
+  const visibleSteps = terminalStep ? [steps[0], terminalStep] : steps;
   const activeStatusIndex = order
-    ? Math.max(
-        steps.findIndex((step) => step.label.toLowerCase() === order.status),
-        order.status === "completed" ? steps.length - 1 : 0
-      )
+    ? isTerminalFailure
+      ? visibleSteps.length - 1
+      : Math.max(
+          visibleSteps.findIndex((step) => step.label.toLowerCase() === order.status),
+          order.status === "completed" ? visibleSteps.length - 1 : 0
+        )
     : -1;
+  const statusTitle = isTerminalFailure
+    ? statusText === "rejected"
+      ? `${shopName} rejected this order`
+      : "This order was cancelled"
+    : order?.status === "completed"
+      ? "Order completed"
+      : `${shopName} is on it`;
 
   useEffect(() => {
     if (!order) {
@@ -93,30 +115,38 @@ export function OrderTrackingScreen({
         <IconButton icon="refresh" onPress={() => void onRefresh()} />
       </View>
 
-      <View style={styles.statusCard}>
+      <View style={[styles.statusCard, isTerminalFailure && styles.statusCardDanger]}>
         <Image resizeMode="contain" source={illustrations.rider} style={styles.statusArt} />
         <Text style={styles.statusBadge}>{String(statusText).toUpperCase()}</Text>
-        <Text style={styles.statusTitle}>{shopName} is on it</Text>
+        <Text style={styles.statusTitle}>{statusTitle}</Text>
         <Text style={styles.statusMeta}>
           {itemCount} items · COD {order ? formatMoney(order.total) : formatMoney(0)}
         </Text>
       </View>
 
       <View style={styles.timeline}>
-        {steps.map((step, index) => {
+        {visibleSteps.map((step, index) => {
           const done = index <= activeStatusIndex;
-          const isLast = index === steps.length - 1;
+          const isLast = index === visibleSteps.length - 1;
           return (
             <View key={step.label} style={styles.timelineRow}>
               <View style={styles.timelineRail}>
-                <View style={[styles.tick, done && styles.tickDone]}>
+                <View style={[styles.tick, done && styles.tickDone, isTerminalFailure && done && styles.tickDanger]}>
                   {done ? (
                     <MaterialCommunityIcons color={colors.onPrimary} name="check" size={14} />
                   ) : (
                     <Text style={styles.tickText}>{index + 1}</Text>
                   )}
                 </View>
-                {!isLast ? <View style={[styles.connector, done && styles.connectorDone]} /> : null}
+                {!isLast ? (
+                  <View
+                    style={[
+                      styles.connector,
+                      done && styles.connectorDone,
+                      isTerminalFailure && done && styles.connectorDanger
+                    ]}
+                  />
+                ) : null}
               </View>
               <View style={styles.timelineCopy}>
                 <Text style={[styles.timelineTitle, !done && { color: colors.muted }]}>
@@ -171,6 +201,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...shadow.yellow
   },
+  statusCardDanger: {
+    backgroundColor: colors.dangerSoft
+  },
   statusArt: {
     width: 132,
     height: 132,
@@ -224,6 +257,10 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.primary
   },
+  tickDanger: {
+    borderColor: colors.danger,
+    backgroundColor: colors.danger
+  },
   tickText: {
     color: colors.muted,
     fontFamily: fonts.bold,
@@ -238,6 +275,9 @@ const styles = StyleSheet.create({
   },
   connectorDone: {
     backgroundColor: colors.primary
+  },
+  connectorDanger: {
+    backgroundColor: colors.danger
   },
   timelineCopy: {
     flex: 1,

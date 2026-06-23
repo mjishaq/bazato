@@ -119,6 +119,7 @@ export default function VendorHome() {
   const [adminOtp, setAdminOtp] = useState("");
   const [loginPhone, setLoginPhone] = useState("");
   const [loginOtp, setLoginOtp] = useState("");
+  const [signupOtpSent, setSignupOtpSent] = useState(false);
   const [onboardingForm, setOnboardingForm] = useState(emptyOnboarding);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -315,6 +316,7 @@ export default function VendorHome() {
         throw new Error(data.error ?? "Unable to send OTP");
       }
 
+      setSignupOtpSent(true);
       setError(data.message ?? "OTP sent.");
     } catch (otpError) {
       setError(otpError instanceof Error ? otpError.message : "Unable to send OTP");
@@ -755,39 +757,48 @@ export default function VendorHome() {
                   inputMode="tel"
                   minLength={10}
                   value={onboardingForm.ownerPhone}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setSignupOtpSent(false);
                     setOnboardingForm((current) => ({
                       ...current,
+                      otp: "",
                       ownerPhone: event.target.value.replace(/\D/g, "")
-                    }))
-                  }
+                    }));
+                  }}
                 />
               </label>
-              <label>
-                OTP
-                <input
-                  required
-                  inputMode="numeric"
-                  maxLength={4}
-                  minLength={4}
-                  value={onboardingForm.otp}
-                  onChange={(event) =>
-                    setOnboardingForm((current) => ({
-                      ...current,
-                      otp: event.target.value.replace(/\D/g, "")
-                    }))
-                  }
-                />
-              </label>
+              {signupOtpSent ? (
+                <label>
+                  OTP
+                  <input
+                    required
+                    inputMode="numeric"
+                    maxLength={4}
+                    minLength={4}
+                    value={onboardingForm.otp}
+                    onChange={(event) =>
+                      setOnboardingForm((current) => ({
+                        ...current,
+                        otp: event.target.value.replace(/\D/g, "")
+                      }))
+                    }
+                  />
+                </label>
+              ) : (
+                <button
+                  className="secondaryButton"
+                  disabled={isLoading || onboardingForm.ownerPhone.length < 10}
+                  onClick={requestVendorSignupOtp}
+                  type="button"
+                >
+                  Send OTP
+                </button>
+              )}
               <button
-                className="secondaryButton"
-                disabled={isLoading || onboardingForm.ownerPhone.length < 10}
-                onClick={requestVendorSignupOtp}
-                type="button"
+                className="primaryButton"
+                disabled={isLoading || !signupOtpSent || onboardingForm.otp.length !== 4}
+                type="submit"
               >
-                Send OTP
-              </button>
-              <button className="primaryButton" disabled={isLoading} type="submit">
                 {isLoading ? "Creating..." : "Create shop and continue"}
               </button>
             </form>

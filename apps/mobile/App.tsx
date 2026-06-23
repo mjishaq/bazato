@@ -33,7 +33,12 @@ import {
   CustomerOnboardingScreen,
   type CustomerOnboardingProfile
 } from "./src/screens/CustomerOnboardingScreen";
-import { logoutAuthSession, refreshAuthSession, registerCustomer } from "./src/api/auth";
+import {
+  logoutAuthSession,
+  refreshAuthSession,
+  registerCustomer,
+  requestRegistrationOtp
+} from "./src/api/auth";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LocationPermissionScreen } from "./src/screens/LocationPermissionScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
@@ -307,17 +312,31 @@ export default function App() {
   };
 
   const completeOnboarding = async (profile: CustomerOnboardingProfile) => {
-    await registerCustomer(profile);
+    if (!profile.otp) {
+      throw new Error("OTP is required to create your profile.");
+    }
+
+    await registerCustomer({
+      ...profile,
+      otp: profile.otp
+    });
+    const profileForStorage = {
+      address: profile.address,
+      email: profile.email,
+      name: profile.name,
+      phone: profile.phone,
+      preference: profile.preference
+    };
     const initialAddress = {
       id: "address-primary",
       label: "Home",
       line: profile.address
     };
-    setCustomerProfile(profile);
+    setCustomerProfile(profileForStorage);
     setDeliveryAddress(profile.address);
     setAddresses([initialAddress]);
     setSelectedAddressId(initialAddress.id);
-    void AsyncStorage.setItem(onboardingStorageKey, JSON.stringify(profile)).catch(
+    void AsyncStorage.setItem(onboardingStorageKey, JSON.stringify(profileForStorage)).catch(
       () => undefined
     );
     void AsyncStorage.setItem(addressesStorageKey, JSON.stringify([initialAddress])).catch(
@@ -472,6 +491,7 @@ export default function App() {
                   navigation.replace("login");
                 }}
                 onLogin={() => navigation.replace("login")}
+                onRequestOtp={requestRegistrationOtp}
               />
             )}
           </Stack.Screen>
@@ -485,13 +505,14 @@ export default function App() {
                   await saveStoredSession(nextSession);
                   navigation.replace("location");
                 }}
+                onRegister={() => navigation.replace("onboarding")}
               />
             )}
           </Stack.Screen>
           <Stack.Screen name="location">
             {({ navigation }) => (
               <LocationPermissionScreen
-                onBack={() => navigation.replace("login")}
+                onBack={() => navigation.replace(session ? "home" : "login")}
                 onContinue={(location) => {
                   setDeliveryLocation(location ?? null);
                   navigation.replace("home");
@@ -503,7 +524,7 @@ export default function App() {
             {({ navigation }) => (
               <HomeScreen
                 cartSummary={cartSummary}
-                onBack={() => navigation.navigate("location")}
+                onBack={() => undefined}
                 onCart={() => navigation.navigate("cart")}
                 onOpenStore={(shop) => openShop(shop, navigation.navigate)}
                 onOrders={() => navigation.navigate("orders")}

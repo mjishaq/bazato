@@ -14,6 +14,26 @@ async function req(url, options = {}) {
   return body;
 }
 
+async function requestVendorOtp(ownerPhone) {
+  const otp = await req(`${api}/vendor/request-otp`, {
+    method: "POST",
+    headers: H,
+    body: JSON.stringify({ ownerPhone })
+  });
+
+  return otp.otp ?? "1234";
+}
+
+async function requestAdminOtp(phone) {
+  const otp = await req(`${api}/vendor/admin/request-otp`, {
+    method: "POST",
+    headers: H,
+    body: JSON.stringify({ phone })
+  });
+
+  return otp.otp ?? "1234";
+}
+
 async function trackToCompleted({ orderId, token, vendorToken }) {
   const wsUrl = `${api.replace(/^http/, "ws")}/orders/${orderId}/live?token=${encodeURIComponent(token)}`;
   const seen = [];
@@ -64,7 +84,8 @@ async function main() {
   const shopId = shops.shops[0].id;
 
   // --- Vendor login + add a product ---
-  const vendorLogin = await req(`${api}/vendor/login`, { method: "POST", headers: H, body: JSON.stringify({ ownerPhone: vendorPhone }) });
+  const vendorOtp = await requestVendorOtp(vendorPhone);
+  const vendorLogin = await req(`${api}/vendor/login`, { method: "POST", headers: H, body: JSON.stringify({ ownerPhone: vendorPhone, otp: vendorOtp }) });
   log("5. vendor/login", { shop: vendorLogin.shop?.name, shopId: vendorLogin.shop?.id });
   const product = { id: "mock-e2e-mango", name: "Mock E2E Mango", category: "Fruits", unit: "1 kg", price: 60, mrp: 90, inStock: true };
   const saved = await req(`${api}/vendor/shops/${vendorLogin.shop.id}/products`, {
@@ -91,7 +112,8 @@ async function main() {
   // --- Final fetch + admin summary ---
   const fetched = await req(`${api}/orders/${created.order.id}`, { headers: { Authorization: `Bearer ${customerToken}` } });
   log("10. final order", { status: fetched.order.status, shopName: fetched.order.shopName });
-  const adminLogin = await req(`${api}/vendor/admin/login`, { method: "POST", headers: H, body: JSON.stringify({ phone: adminPhone }) });
+  const adminOtp = await requestAdminOtp(adminPhone);
+  const adminLogin = await req(`${api}/vendor/admin/login`, { method: "POST", headers: H, body: JSON.stringify({ phone: adminPhone, otp: adminOtp }) });
   const adminSummary = await req(`${api}/vendor/admin/summary`, { headers: { Authorization: `Bearer ${adminLogin.token}` } });
   log("11. admin summary", adminSummary.totals);
 
