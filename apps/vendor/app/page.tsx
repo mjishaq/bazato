@@ -767,24 +767,7 @@ export default function VendorHome() {
                   }}
                 />
               </label>
-              {signupOtpSent ? (
-                <label>
-                  OTP
-                  <input
-                    required
-                    inputMode="numeric"
-                    maxLength={4}
-                    minLength={4}
-                    value={onboardingForm.otp}
-                    onChange={(event) =>
-                      setOnboardingForm((current) => ({
-                        ...current,
-                        otp: event.target.value.replace(/\D/g, "")
-                      }))
-                    }
-                  />
-                </label>
-              ) : (
+              {!signupOtpSent ? (
                 <button
                   className="secondaryButton"
                   disabled={isLoading || onboardingForm.ownerPhone.length < 10}
@@ -793,14 +776,43 @@ export default function VendorHome() {
                 >
                   Send OTP
                 </button>
+              ) : (
+                <>
+                  <label>
+                    Enter OTP
+                    <input
+                      autoFocus
+                      required
+                      inputMode="numeric"
+                      maxLength={4}
+                      minLength={4}
+                      placeholder="1234"
+                      value={onboardingForm.otp}
+                      onChange={(event) =>
+                        setOnboardingForm((current) => ({
+                          ...current,
+                          otp: event.target.value.replace(/\D/g, "")
+                        }))
+                      }
+                    />
+                  </label>
+                  <button
+                    className="secondaryButton"
+                    disabled={isLoading || onboardingForm.ownerPhone.length < 10}
+                    onClick={requestVendorSignupOtp}
+                    type="button"
+                  >
+                    Resend OTP
+                  </button>
+                  <button
+                    className="primaryButton"
+                    disabled={isLoading || onboardingForm.otp.length !== 4}
+                    type="submit"
+                  >
+                    {isLoading ? "Creating..." : "Create shop and continue"}
+                  </button>
+                </>
               )}
-              <button
-                className="primaryButton"
-                disabled={isLoading || !signupOtpSent || onboardingForm.otp.length !== 4}
-                type="submit"
-              >
-                {isLoading ? "Creating..." : "Create shop and continue"}
-              </button>
             </form>
           )}
           </AutoHeight>
