@@ -8,6 +8,8 @@ type ApiOrder = {
   shopId?: string;
   shopName?: string;
   deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   items: Array<{
     productId: string;
     name: string;
@@ -47,6 +49,8 @@ function mapApiOrder(order: ApiOrder, fallbackLines: CartLine[] = []): Order {
     shopId: order.shopId,
     shopName: order.shopName,
     deliveryAddress: order.deliveryAddress,
+    deliveryLatitude: order.deliveryLatitude,
+    deliveryLongitude: order.deliveryLongitude,
     total: order.total,
     status: order.status,
     placedAt: new Date(order.createdAt).toLocaleTimeString([], {
@@ -68,12 +72,16 @@ export async function createCodOrder({
   phone,
   shopId,
   deliveryAddress,
+  deliveryLatitude,
+  deliveryLongitude,
   token
 }: {
   lines: CartLine[];
   phone: string;
   shopId: string;
   deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   token: string | null;
 }) {
   const data = await apiRequest<{ order: ApiOrder }>("/orders", {
@@ -83,6 +91,8 @@ export async function createCodOrder({
       phone,
       shopId,
       deliveryAddress,
+      deliveryLatitude,
+      deliveryLongitude,
       items: lines.map((line) => ({
         productId: line.product.id,
         quantity: line.quantity

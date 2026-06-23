@@ -1,15 +1,16 @@
-import { env } from "../config/env.js";
 import type { AuthUser } from "../domain/models.js";
 import type {
   CustomerProfileInput,
   CustomerRepository
 } from "../repositories/customerRepository.js";
+import type { TokenService } from "./tokenService.js";
 import type { OtpService } from "./otpService.js";
 
 export class AuthService {
   constructor(
     private readonly otpService: OtpService,
-    private readonly customerRepository: CustomerRepository
+    private readonly customerRepository: CustomerRepository,
+    private readonly tokenService: TokenService
   ) {}
 
   async registerCustomer(input: CustomerProfileInput) {
@@ -51,7 +52,11 @@ export class AuthService {
     };
 
     return {
-      token: env.NODE_ENV === "production" ? "" : `mock-customer-${phone}`,
+      ...(await this.tokenService.createTokenPair({
+        phone,
+        role: "customer",
+        userId: customer.id
+      })),
       user
     };
   }

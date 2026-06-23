@@ -54,6 +54,8 @@ export type Order = {
   paymentMethod: "cod";
   status: OrderStatus;
   deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   note?: string;
   createdAt: string;
   timeline: Array<{

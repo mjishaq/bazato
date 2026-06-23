@@ -40,6 +40,18 @@ model User {
   updatedAt         DateTime @updatedAt
   orders            Order[]
   ownedShops        Shop[]   @relation("ShopOwner")
+  refreshSessions   RefreshSession[]
+}
+
+model RefreshSession {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        UserRole
+  shopId      String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
 }
 
 model Shop {
@@ -88,6 +100,8 @@ model Order {
   paymentMethod PaymentMethod   @default(COD)
   status        OrderStatus     @default(PLACED)
   deliveryAddress String?
+  deliveryLatitude Decimal?        @db.Decimal(10, 7)
+  deliveryLongitude Decimal?       @db.Decimal(10, 7)
   note          String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt

@@ -46,7 +46,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}) 
     clearTimeout(timeout);
   }
 
-  const data = (await response.json()) as T | { error?: string };
+  const data =
+    response.status === 204
+      ? undefined
+      : ((await response.json()) as T | { error?: string });
 
   if (!response.ok) {
     const maybeError = data as { error?: string };

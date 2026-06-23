@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 
 import { env } from "../config/env.js";
 
-export type AppRole = "vendor" | "admin";
+export type AppRole = "customer" | "vendor" | "admin";
 
 export type AppTokenPayload = JWTPayload & {
   role?: AppRole;
@@ -17,16 +17,36 @@ export type AppAuthenticatedRequest = Request & {
 
 const secret = new TextEncoder().encode(env.JWT_SECRET);
 
-export async function createAppToken(payload: {
-  phone: string;
-  role: AppRole;
-  shopId?: string;
-}) {
-  return new SignJWT(payload)
+export async function createAppToken(
+  payload: {
+    phone: string;
+    role: AppRole;
+    shopId?: string;
+  },
+  subject?: string
+) {
+  const token = new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("12h")
-    .sign(secret);
+    .setIssuedAt();
+
+  if (subject) {
+    token.setSubject(subject);
+  }
+
+  return token.setExpirationTime("15m").sign(secret);
+}
+
+export async function verifyAppToken(token: string | null | undefined) {
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const verified = await jwtVerify(token, secret);
+    return verified.payload as AppTokenPayload;
+  } catch {
+    return null;
+  }
 }
 
 export function requireAppRole(role: AppRole) {
@@ -42,10 +62,9 @@ export function requireAppRole(role: AppRole) {
     }
 
     try {
-      const verified = await jwtVerify(token, secret);
-      const payload = verified.payload as AppTokenPayload;
+      const payload = await verifyAppToken(token);
 
-      if (payload.role !== role && payload.role !== "admin") {
+      if (!payload || (payload.role !== role && payload.role !== "admin")) {
         res.status(403).json({ error: "Insufficient role" });
         return;
       }

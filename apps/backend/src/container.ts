@@ -8,10 +8,13 @@ import type { CustomerRepository } from "./repositories/customerRepository.js";
 import { MemoryCustomerRepository } from "./repositories/customerRepository.js";
 import type { OrderRepository } from "./repositories/orderRepository.js";
 import { MemoryOrderRepository } from "./repositories/orderRepository.js";
+import type { RefreshSessionRepository } from "./repositories/refreshSessionRepository.js";
+import { MemoryRefreshSessionRepository } from "./repositories/refreshSessionRepository.js";
 import { AuthService } from "./services/authService.js";
 import { CatalogService } from "./services/catalogService.js";
 import { MockOtpService, SmsOtpService } from "./services/otpService.js";
 import { OrderService } from "./services/orderService.js";
+import { TokenService } from "./services/tokenService.js";
 
 class LazyPrismaCatalogRepository implements CatalogRepository {
   private repository: Promise<CatalogRepository> | null = null;
@@ -109,6 +112,30 @@ class LazyPrismaCustomerRepository implements CustomerRepository {
   }
 }
 
+class LazyPrismaRefreshSessionRepository implements RefreshSessionRepository {
+  private repository: Promise<RefreshSessionRepository> | null = null;
+
+  private async getRepository() {
+    this.repository ??= import("./repositories/prismaRefreshSessionRepository.js").then(
+      ({ PrismaRefreshSessionRepository }) => new PrismaRefreshSessionRepository()
+    );
+
+    return this.repository;
+  }
+
+  async createSession(...args: Parameters<RefreshSessionRepository["createSession"]>) {
+    return (await this.getRepository()).createSession(...args);
+  }
+
+  async consumeSession(...args: Parameters<RefreshSessionRepository["consumeSession"]>) {
+    return (await this.getRepository()).consumeSession(...args);
+  }
+
+  async revokeSession(...args: Parameters<RefreshSessionRepository["revokeSession"]>) {
+    return (await this.getRepository()).revokeSession(...args);
+  }
+}
+
 const catalogRepository =
   env.DATA_SOURCE === "postgres"
     ? new LazyPrismaCatalogRepository()
@@ -124,10 +151,17 @@ const customerRepository =
     ? new LazyPrismaCustomerRepository()
     : new MemoryCustomerRepository();
 
+const refreshSessionRepository =
+  env.DATA_SOURCE === "postgres"
+    ? new LazyPrismaRefreshSessionRepository()
+    : new MemoryRefreshSessionRepository();
+
 const otpService = env.OTP_PROVIDER === "sms" ? new SmsOtpService() : new MockOtpService();
+const tokenService = new TokenService(refreshSessionRepository);
 
 export const services = {
-  auth: new AuthService(otpService, customerRepository),
+  auth: new AuthService(otpService, customerRepository, tokenService),
   catalog: new CatalogService(catalogRepository),
-  orders: new OrderService(catalogRepository, orderRepository)
+  orders: new OrderService(catalogRepository, orderRepository),
+  tokens: tokenService
 };

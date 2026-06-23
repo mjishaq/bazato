@@ -12,7 +12,7 @@ type PermissionState = "idle" | "requesting" | "granted" | "denied" | "demo";
 
 type LocationPermissionScreenProps = {
   onBack: () => void;
-  onContinue: () => void;
+  onContinue: (location?: { latitude: number; longitude: number }) => void;
 };
 
 export function LocationPermissionScreen({
@@ -31,9 +31,13 @@ export function LocationPermissionScreen({
     const result = await Location.requestForegroundPermissionsAsync();
 
     if (result.status === Location.PermissionStatus.GRANTED) {
+      const current = await Location.getCurrentPositionAsync({});
       setPermissionState("granted");
       setMessage("Location access is on. Nearby shops will appear next.");
-      onContinue();
+      onContinue({
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude
+      });
       return;
     }
 

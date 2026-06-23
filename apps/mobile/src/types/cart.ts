@@ -24,6 +24,8 @@ export type Order = {
   total: number;
   status: OrderStatus;
   deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   placedAt: string;
   timeline?: Array<{
     status: OrderStatus;

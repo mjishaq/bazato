@@ -429,6 +429,20 @@ h2 {
   line-height: 1.5;
 }
 
+.mapLink {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 4px;
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.mapLink:hover {
+  text-decoration: underline;
+}
+
 .statusActions {
   display: flex;
   flex-wrap: wrap;

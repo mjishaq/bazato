@@ -13,6 +13,8 @@ export type CreateOrderInput = {
     quantity: number;
   }>;
   deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   note?: string;
 };
 
@@ -62,6 +64,8 @@ export class OrderService {
       paymentMethod: "cod",
       status: "placed",
       deliveryAddress: input.deliveryAddress,
+      deliveryLatitude: input.deliveryLatitude,
+      deliveryLongitude: input.deliveryLongitude,
       note: input.note,
       createdAt: now,
       timeline: [{ status: "placed", at: now }]

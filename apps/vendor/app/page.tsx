@@ -27,6 +27,9 @@ type Order = {
   phone: string;
   status: string;
   total: number;
+  deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   createdAt: string;
   items: Array<{
     name: string;
@@ -74,6 +77,8 @@ type AdminSummary = {
 };
 
 type VendorSession = {
+  accessToken?: string;
+  refreshToken?: string;
   shop: Shop;
   token: string;
 };
@@ -106,7 +111,9 @@ export default function VendorHome() {
   >("login");
   const [shop, setShop] = useState<Shop | null>(null);
   const [vendorToken, setVendorToken] = useState("");
+  const [vendorRefreshToken, setVendorRefreshToken] = useState("");
   const [adminToken, setAdminToken] = useState("");
+  const [adminRefreshToken, setAdminRefreshToken] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
   const [loginPhone, setLoginPhone] = useState("");
   const [onboardingForm, setOnboardingForm] = useState(emptyOnboarding);
@@ -126,6 +133,69 @@ export default function VendorHome() {
     [summary]
   );
 
+  const refreshPortalToken = async (kind: "admin" | "vendor") => {
+    const refreshToken = kind === "admin" ? adminRefreshToken : vendorRefreshToken;
+
+    if (!refreshToken) {
+      return "";
+    }
+
+    const response = await fetch(`${apiUrl}/vendor/refresh`, {
+      body: JSON.stringify({ refreshToken }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    const data = (await response.json()) as {
+      accessToken?: string;
+      error?: string;
+      refreshToken?: string;
+      token?: string;
+    };
+
+    if (!response.ok || !data.accessToken || !data.refreshToken) {
+      throw new Error(data.error ?? "Session expired. Please login again.");
+    }
+
+    if (kind === "admin") {
+      setAdminToken(data.accessToken);
+      setAdminRefreshToken(data.refreshToken);
+    } else {
+      setVendorToken(data.accessToken);
+      setVendorRefreshToken(data.refreshToken);
+    }
+
+    return data.accessToken;
+  };
+
+  const fetchWithPortalAuth = async (
+    url: string,
+    init: RequestInit,
+    kind: "admin" | "vendor"
+  ) => {
+    const accessToken = kind === "admin" ? adminToken : vendorToken;
+    const first = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers ?? {}),
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    if (first.status !== 401) {
+      return first;
+    }
+
+    const nextToken = await refreshPortalToken(kind);
+
+    return fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers ?? {}),
+        Authorization: `Bearer ${nextToken}`
+      }
+    });
+  };
+
   const loadSummary = async (nextShopId = shopId) => {
     if (!nextShopId) {
       return;
@@ -135,11 +205,11 @@ export default function VendorHome() {
     setError("");
 
     try {
-      const response = await fetch(`${apiUrl}/vendor/shops/${nextShopId}/summary`, {
-        headers: {
-          Authorization: `Bearer ${vendorToken}`
-        }
-      });
+      const response = await fetchWithPortalAuth(
+        `${apiUrl}/vendor/shops/${nextShopId}/summary`,
+        {},
+        "vendor"
+      );
       const data = (await response.json()) as Summary | { error?: string };
 
       if (!response.ok) {
@@ -154,8 +224,8 @@ export default function VendorHome() {
     }
   };
 
-  const loadAdminSummary = async (token = adminToken) => {
-    if (!token) {
+  const loadAdminSummary = async (token?: string) => {
+    if (!token && !adminToken) {
       return;
     }
 
@@ -163,11 +233,13 @@ export default function VendorHome() {
     setError("");
 
     try {
-      const response = await fetch(`${apiUrl}/vendor/admin/summary`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = token
+        ? await fetch(`${apiUrl}/vendor/admin/summary`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          })
+        : await fetchWithPortalAuth(`${apiUrl}/vendor/admin/summary`, {}, "admin");
       const data = (await response.json()) as AdminSummary | { error?: string };
 
       if (!response.ok) {
@@ -214,7 +286,8 @@ export default function VendorHome() {
       }
 
       setShop(data.shop);
-      setVendorToken(data.token);
+      setVendorToken(data.accessToken ?? data.token);
+      setVendorRefreshToken(data.refreshToken ?? "");
       setView("dashboard");
     } catch (signupError) {
       setError(signupError instanceof Error ? signupError.message : "Unable to sign up");
@@ -243,7 +316,8 @@ export default function VendorHome() {
       }
 
       setShop(data.shop);
-      setVendorToken(data.token);
+      setVendorToken(data.accessToken ?? data.token);
+      setVendorRefreshToken(data.refreshToken ?? "");
       setView("dashboard");
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Unable to login");
@@ -263,15 +337,21 @@ export default function VendorHome() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const data = (await response.json()) as { error?: string; token?: string };
+      const data = (await response.json()) as {
+        accessToken?: string;
+        error?: string;
+        refreshToken?: string;
+        token?: string;
+      };
 
-      if (!response.ok || !data.token) {
+      if (!response.ok || !(data.accessToken ?? data.token)) {
         throw new Error(data.error ?? "Unable to login as admin");
       }
 
-      setAdminToken(data.token);
+      setAdminToken(data.accessToken ?? data.token ?? "");
+      setAdminRefreshToken(data.refreshToken ?? "");
       setView("adminDashboard");
-      await loadAdminSummary(data.token);
+      await loadAdminSummary(data.accessToken ?? data.token);
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Unable to login");
     } finally {
@@ -295,14 +375,13 @@ export default function VendorHome() {
         id: productForm.id || undefined,
         imageUrl: productForm.imageUrl || undefined
       };
-      const response = await fetch(`${apiUrl}/vendor/shops/${shopId}/products`, {
+      const response = await fetchWithPortalAuth(`${apiUrl}/vendor/shops/${shopId}/products`, {
         body: JSON.stringify(payload),
         headers: {
-          Authorization: `Bearer ${vendorToken}`,
           "Content-Type": "application/json"
         },
         method: "PUT"
-      });
+      }, "vendor");
       const data = (await response.json()) as { error?: string };
 
       if (!response.ok) {
@@ -339,14 +418,13 @@ export default function VendorHome() {
     setError("");
 
     try {
-      const response = await fetch(`${apiUrl}/vendor/orders/${orderId}/status`, {
+      const response = await fetchWithPortalAuth(`${apiUrl}/vendor/orders/${orderId}/status`, {
         body: JSON.stringify({ status }),
         headers: {
-          Authorization: `Bearer ${vendorToken}`,
           "Content-Type": "application/json"
         },
         method: "PATCH"
-      });
+      }, "vendor");
       const data = (await response.json()) as { error?: string };
 
       if (!response.ok) {
@@ -377,6 +455,7 @@ export default function VendorHome() {
             className="navButton"
             onClick={() => {
               setAdminToken("");
+              setAdminRefreshToken("");
               setAdminSummary(null);
               setView("login");
             }}
@@ -610,6 +689,7 @@ export default function VendorHome() {
             setShop(null);
             setSummary(null);
             setVendorToken("");
+            setVendorRefreshToken("");
             setView("login");
           }}
         >
@@ -656,6 +736,22 @@ export default function VendorHome() {
                         .map((item) => `${item.quantity}x ${item.name}`)
                         .join(", ")}
                     </p>
+                    <p className="muted">
+                      Deliver to: {order.deliveryAddress || "Address not provided"}
+                    </p>
+                    {typeof order.deliveryLatitude === "number" &&
+                    typeof order.deliveryLongitude === "number" ? (
+                      <a
+                        className="mapLink"
+                        href={`https://www.google.com/maps/search/?api=1&query=${order.deliveryLatitude},${order.deliveryLongitude}`}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Open delivery location
+                      </a>
+                    ) : (
+                      <p className="muted">Location: Not shared</p>
+                    )}
                   </div>
                   <div className="statusActions">
                     {orderStatuses.map((status) => (

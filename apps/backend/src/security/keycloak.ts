@@ -1,7 +1,7 @@
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import type { JWTPayload } from "jose";
 import type { NextFunction, Request, Response } from "express";
 
-import { env } from "../config/env.js";
+import { verifyAppToken } from "./appToken.js";
 
 export type AuthenticatedRequest = Request & {
   auth?: JWTPayload & {
@@ -12,50 +12,20 @@ export type AuthenticatedRequest = Request & {
   };
 };
 
-const jwks =
-  env.KEYCLOAK_JWKS_URL && env.KEYCLOAK_ISSUER
-    ? createRemoteJWKSet(new URL(env.KEYCLOAK_JWKS_URL))
-    : null;
-
 export async function authenticateToken(token: string | null | undefined) {
-  if (env.NODE_ENV !== "production" && token?.startsWith("mock-customer-")) {
-    const phone = token.replace("mock-customer-", "");
+  const payload = await verifyAppToken(token);
 
-    return {
-      sub: `customer-${phone}`,
-      realm_access: {
-        roles: ["customer"]
-      }
-    } satisfies AuthenticatedRequest["auth"];
+  if (!payload?.sub || !payload.role) {
+    return null;
   }
 
-  if (!jwks || !env.KEYCLOAK_ISSUER) {
-    if (env.NODE_ENV === "production") {
-      return null;
+  return {
+    ...payload,
+    sub: payload.sub,
+    realm_access: {
+      roles: [payload.role]
     }
-
-    return {
-      sub: "development-user",
-      realm_access: {
-        roles: ["customer"]
-      }
-    } satisfies AuthenticatedRequest["auth"];
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const verified = await jwtVerify(token, jwks, {
-      audience: env.KEYCLOAK_AUDIENCE,
-      issuer: env.KEYCLOAK_ISSUER
-    });
-
-    return verified.payload as AuthenticatedRequest["auth"];
-  } catch {
-    return null;
-  }
+  } satisfies AuthenticatedRequest["auth"];
 }
 
 export async function requireAuth(

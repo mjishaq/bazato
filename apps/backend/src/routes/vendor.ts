@@ -5,7 +5,6 @@ import { env } from "../config/env.js";
 import { services } from "../container.js";
 import type { OrderStatus } from "../domain/models.js";
 import {
-  createAppToken,
   requireAppRole,
   requireSameShop,
   type AppAuthenticatedRequest
@@ -51,6 +50,10 @@ const adminLoginSchema = z.object({
   phone: z.string().min(10)
 });
 
+const refreshSchema = z.object({
+  refreshToken: z.string().min(32)
+});
+
 function routeParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -69,13 +72,14 @@ vendorRouter.post("/onboarding", async (req, res) => {
     name: parsed.data.shopName,
     ownerPhone: parsed.data.ownerPhone
   });
-  const token = await createAppToken({
+  const tokens = await services.tokens.createTokenPair({
     phone: parsed.data.ownerPhone,
     role: "vendor",
-    shopId: shop.id
+    shopId: shop.id,
+    userId: `vendor-${parsed.data.ownerPhone}`
   });
 
-  res.status(201).json({ shop, token });
+  res.status(201).json({ shop, ...tokens });
 });
 
 vendorRouter.post("/login", async (req, res) => {
@@ -93,13 +97,14 @@ vendorRouter.post("/login", async (req, res) => {
     return;
   }
 
-  const token = await createAppToken({
+  const tokens = await services.tokens.createTokenPair({
     phone: parsed.data.ownerPhone,
     role: "vendor",
-    shopId: shop.id
+    shopId: shop.id,
+    userId: `vendor-${parsed.data.ownerPhone}`
   });
 
-  res.json({ shop, token });
+  res.json({ shop, ...tokens });
 });
 
 vendorRouter.post("/admin/login", async (req, res) => {
@@ -115,12 +120,36 @@ vendorRouter.post("/admin/login", async (req, res) => {
     return;
   }
 
-  const token = await createAppToken({
+  const tokens = await services.tokens.createTokenPair({
     phone: parsed.data.phone,
-    role: "admin"
+    role: "admin",
+    userId: `admin-${parsed.data.phone}`
   });
 
-  res.json({ token });
+  res.json(tokens);
+});
+
+vendorRouter.post("/refresh", async (req, res) => {
+  const parsed = refreshSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Refresh token is required" });
+    return;
+  }
+
+  const tokens = await services.tokens.refreshTokenPair(parsed.data.refreshToken);
+
+  if (!tokens) {
+    res.status(401).json({ error: "Invalid or expired refresh token" });
+    return;
+  }
+
+  if (!["vendor", "admin"].includes(tokens.role)) {
+    res.status(403).json({ error: "Refresh token is not valid for vendor access" });
+    return;
+  }
+
+  res.json(tokens);
 });
 
 vendorRouter.get(

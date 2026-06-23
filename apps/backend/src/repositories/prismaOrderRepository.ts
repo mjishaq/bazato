@@ -49,6 +49,10 @@ function mapOrder(order: OrderRow | null): Order | null {
     paymentMethod: "cod",
     status: statusFromPrisma[order.status],
     deliveryAddress: order.deliveryAddress ?? undefined,
+    deliveryLatitude:
+      order.deliveryLatitude !== null ? Number(order.deliveryLatitude) : undefined,
+    deliveryLongitude:
+      order.deliveryLongitude !== null ? Number(order.deliveryLongitude) : undefined,
     note: order.note ?? undefined,
     createdAt: order.createdAt.toISOString(),
     timeline: order.timeline.map((item) => ({
@@ -104,6 +108,8 @@ export class PrismaOrderRepository implements OrderRepository {
         paymentMethod: "COD",
         status: "PLACED",
         deliveryAddress: order.deliveryAddress,
+        deliveryLatitude: order.deliveryLatitude,
+        deliveryLongitude: order.deliveryLongitude,
         note: order.note,
         items: {
           create: order.items.map((item) => ({

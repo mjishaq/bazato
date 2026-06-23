@@ -29,7 +29,7 @@ import {
   CustomerOnboardingScreen,
   type CustomerOnboardingProfile
 } from "./src/screens/CustomerOnboardingScreen";
-import { registerCustomer } from "./src/api/auth";
+import { logoutAuthSession, refreshAuthSession, registerCustomer } from "./src/api/auth";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LocationPermissionScreen } from "./src/screens/LocationPermissionScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
@@ -39,6 +39,11 @@ import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SearchScreen } from "./src/screens/SearchScreen";
 import { StoreCatalogScreen } from "./src/screens/StoreCatalogScreen";
 import type { AuthSession } from "./src/services/authGateway";
+import {
+  clearStoredSession,
+  loadStoredSession,
+  saveStoredSession
+} from "./src/services/tokenStorage";
 import { colors } from "./src/theme/colors";
 import type { CartQuantities, Order } from "./src/types/cart";
 import { getCartSummary } from "./src/utils/cart";
@@ -60,6 +65,7 @@ type RootStackParamList = Record<AppScreen, undefined>;
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const onboardingStorageKey = "bazzato.customer.onboarding";
+const tokenRefreshSkewMs = 60 * 1000;
 
 const PHONE_WIDTH = 412;
 const PHONE_MAX_HEIGHT = 896;
@@ -137,6 +143,10 @@ export default function App() {
   const [deliveryAddress, setDeliveryAddress] = useState(
     "Demo area, near current location"
   );
+  const [deliveryLocation, setDeliveryLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [customerProfile, setCustomerProfile] =
     useState<CustomerOnboardingProfile | null>(null);
   const [hasLoadedOnboarding, setHasLoadedOnboarding] = useState(false);
@@ -145,13 +155,15 @@ export default function App() {
   const cartSummary = getCartSummary(cart, catalogProducts);
 
   const refreshOrders = async () => {
-    if (!session?.token) {
+    const activeSession = await getActiveSession();
+
+    if (!activeSession?.token) {
       return;
     }
 
     setIsLoadingOrders(true);
     try {
-      setOrders(await getOrders(session.token));
+      setOrders(await getOrders(activeSession.token));
     } catch {
       setOrders((current) => current);
     } finally {
@@ -160,9 +172,12 @@ export default function App() {
   };
 
   useEffect(() => {
-    AsyncStorage.getItem(onboardingStorageKey)
-      .then((value) => {
+    Promise.all([AsyncStorage.getItem(onboardingStorageKey), loadStoredSession()])
+      .then(([value, storedSession]) => {
         if (!value) {
+          if (storedSession && new Date(storedSession.refreshTokenExpiresAt).getTime() > Date.now()) {
+            setSession(storedSession);
+          }
           return;
         }
 
@@ -171,6 +186,10 @@ export default function App() {
         if (isCompleteCustomerProfile(profile)) {
           setCustomerProfile(profile);
           setDeliveryAddress(profile.address);
+        }
+
+        if (storedSession && new Date(storedSession.refreshTokenExpiresAt).getTime() > Date.now()) {
+          setSession(storedSession);
         }
       })
       .catch(() => undefined)
@@ -226,6 +245,31 @@ export default function App() {
     refreshOrders();
   }, [session?.token]);
 
+  const getActiveSession = async () => {
+    if (!session) {
+      return null;
+    }
+
+    if (session.expiresAt > Date.now() + tokenRefreshSkewMs) {
+      return session;
+    }
+
+    const tokens = await refreshAuthSession(session.refreshToken);
+    const nextSession = {
+      ...session,
+      accessToken: tokens.accessToken,
+      expiresAt: Date.now() + tokens.expiresInSeconds * 1000,
+      refreshToken: tokens.refreshToken,
+      refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
+      token: tokens.accessToken
+    };
+
+    setSession(nextSession);
+    await saveStoredSession(nextSession);
+
+    return nextSession;
+  };
+
   const addToCart = (productId: string) => {
     setCart((current) => ({
       ...current,
@@ -263,7 +307,9 @@ export default function App() {
       phone: session?.phone ?? customerProfile?.phone ?? "9876543210",
       shopId: selectedShop?.id ?? env.defaultShopId,
       deliveryAddress,
-      token: session?.token ?? null
+      deliveryLatitude: deliveryLocation?.latitude,
+      deliveryLongitude: deliveryLocation?.longitude,
+      token: (await getActiveSession())?.token ?? null
     });
     nextOrder.shopName = nextOrder.shopName ?? selectedShop?.name;
     nextOrder.shopId = nextOrder.shopId ?? selectedShop?.id;
@@ -278,12 +324,14 @@ export default function App() {
   };
 
   const refreshCurrentOrder = async () => {
-    if (!order || !session?.token) {
+    const activeSession = await getActiveSession();
+
+    if (!order || !activeSession?.token) {
       return;
     }
 
     try {
-      const nextOrder = await getOrder(order.id, session.token);
+      const nextOrder = await getOrder(order.id, activeSession.token);
       setOrder(nextOrder);
       setOrders((current) => [
         nextOrder,
@@ -303,10 +351,16 @@ export default function App() {
   };
 
   const logout = (navigate: (screen: AppScreen) => void) => {
+    const refreshToken = session?.refreshToken;
+
     setCart({});
     setOrder(null);
     setOrders([]);
     setSession(null);
+    void clearStoredSession();
+    if (refreshToken) {
+      void logoutAuthSession(refreshToken).catch(() => undefined);
+    }
     navigate("login");
   };
 
@@ -350,10 +404,11 @@ export default function App() {
           <Stack.Screen name="login">
             {({ navigation }) => (
               <LoginScreen
-                initialPhone={customerProfile?.phone}
-                lockPhone={Boolean(customerProfile?.phone)}
-                onComplete={(nextSession) => {
+                initialPhone=""
+                lockPhone={false}
+                onComplete={async (nextSession) => {
                   setSession(nextSession);
+                  await saveStoredSession(nextSession);
                   navigation.replace("location");
                 }}
               />
@@ -363,7 +418,10 @@ export default function App() {
             {({ navigation }) => (
               <LocationPermissionScreen
                 onBack={() => navigation.replace("login")}
-                onContinue={() => navigation.replace("home")}
+                onContinue={(location) => {
+                  setDeliveryLocation(location ?? null);
+                  navigation.replace("home");
+                }}
               />
             )}
           </Stack.Screen>

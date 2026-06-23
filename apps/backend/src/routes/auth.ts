@@ -16,6 +16,10 @@ const customerRegistrationSchema = phoneSchema.extend({
   preference: z.string().min(1)
 });
 
+const refreshSchema = z.object({
+  refreshToken: z.string().min(32)
+});
+
 authRouter.post("/register", async (req, res) => {
   const parsed = customerRegistrationSchema.safeParse(req.body);
 
@@ -72,4 +76,32 @@ authRouter.post("/verify-otp", async (req, res) => {
   }
 
   res.json(session);
+});
+
+authRouter.post("/refresh", async (req, res) => {
+  const parsed = refreshSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Refresh token is required" });
+    return;
+  }
+
+  const tokens = await services.tokens.refreshTokenPair(parsed.data.refreshToken);
+
+  if (!tokens) {
+    res.status(401).json({ error: "Invalid or expired refresh token" });
+    return;
+  }
+
+  res.json(tokens);
+});
+
+authRouter.post("/logout", async (req, res) => {
+  const parsed = refreshSchema.safeParse(req.body);
+
+  if (parsed.success) {
+    await services.tokens.revokeRefreshToken(parsed.data.refreshToken);
+  }
+
+  res.status(204).send();
 });

@@ -2,6 +2,10 @@ import type { AuthUser } from "../api/auth";
 import { requestOtp, verifyOtp } from "../api/auth";
 
 export type AuthSession = {
+  accessToken: string;
+  expiresAt: number;
+  refreshToken: string;
+  refreshTokenExpiresAt: string;
   phone: string;
   token: string;
   user: AuthUser;
@@ -24,8 +28,12 @@ export class ApiPhoneAuthGateway implements PhoneAuthGateway {
     const session = await verifyOtp(phone, otp);
 
     return {
+      ...session,
+      accessToken: session.accessToken,
+      expiresAt: Date.now() + session.expiresInSeconds * 1000,
       phone,
-      ...session
+      refreshToken: session.refreshToken,
+      refreshTokenExpiresAt: session.refreshTokenExpiresAt
     };
   }
 }
