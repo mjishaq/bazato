@@ -13,6 +13,7 @@ import { formatMoney } from "../utils/cart";
 type CheckoutScreenProps = {
   cartSummary: ReturnType<typeof getCartSummary>;
   deliveryAddress: string;
+  onAddressBook: () => void;
   onBack: () => void;
   onDeliveryAddressChange: (address: string) => void;
   onPlaceOrder: () => Promise<void>;
@@ -22,6 +23,7 @@ type CheckoutScreenProps = {
 export function CheckoutScreen({
   cartSummary,
   deliveryAddress,
+  onAddressBook,
   onBack,
   onDeliveryAddressChange,
   onPlaceOrder,
@@ -90,6 +92,13 @@ export function CheckoutScreen({
             <Text style={styles.cardSub}>Saved for this order</Text>
           </View>
         </View>
+        <Button
+          icon="book-marker"
+          label="Choose saved address"
+          onPress={onAddressBook}
+          style={{ marginBottom: 12 }}
+          variant="ghost"
+        />
         <TextInput
           multiline
           onChangeText={onDeliveryAddressChange}

@@ -10,6 +10,7 @@ import { healthRouter } from "./routes/health.js";
 import { ordersRouter } from "./routes/orders.js";
 import { vendorRouter } from "./routes/vendor.js";
 import { env } from "./config/env.js";
+import { auditErrorResponses, auditUnhandledErrors } from "./middleware/audit.js";
 
 function getCorsOrigin() {
   if (!env.CORS_ORIGIN) {
@@ -37,6 +38,7 @@ export function createApp() {
   );
   app.use(cors({ origin: getCorsOrigin() }));
   app.use(express.json({ limit: "1mb" }));
+  app.use(auditErrorResponses);
   app.use(morgan("dev"));
 
   app.get("/", (_req, res) => {
@@ -52,6 +54,7 @@ export function createApp() {
   app.use("/catalog", catalogRouter);
   app.use("/orders", ordersRouter);
   app.use("/vendor", vendorRouter);
+  app.use(auditUnhandledErrors);
 
   return app;
 }

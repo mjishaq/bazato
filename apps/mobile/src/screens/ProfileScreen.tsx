@@ -11,10 +11,12 @@ import { formatMoney } from "../utils/cart";
 type ProfileScreenProps = {
   order: Order | null;
   orderCount: number;
+  addressCount: number;
   customerName?: string;
   customerEmail?: string;
   phone?: string;
   deliveryAddress: string;
+  onAddresses: () => void;
   onHome: () => void;
   onLogout: () => void;
   onOrders: () => void;
@@ -24,10 +26,12 @@ type ProfileScreenProps = {
 export function ProfileScreen({
   order,
   orderCount,
+  addressCount,
   customerName,
   customerEmail,
   phone,
   deliveryAddress,
+  onAddresses,
   onHome,
   onLogout,
   onOrders,
@@ -64,7 +68,7 @@ export function ProfileScreen({
       <View style={styles.statsRow}>
         <Stat icon="receipt" value={String(orderCount)} label="Orders" />
         <Stat icon="cash" value="COD" label="Payment" />
-        <Stat icon="map-marker" value="1" label="Address" />
+        <Stat icon="map-marker" value={String(addressCount)} label="Addresses" />
       </View>
 
       <View style={styles.card}>
@@ -93,6 +97,10 @@ export function ProfileScreen({
           <MaterialCommunityIcons color={colors.primaryDark} name="map-marker" size={20} />
           <Text style={styles.rowText}>{deliveryAddress || "No saved delivery address yet"}</Text>
         </View>
+        <Pressable onPress={onAddresses} style={styles.manageAddresses}>
+          <MaterialCommunityIcons color={colors.primaryDark} name="book-marker" size={18} />
+          <Text style={styles.manageAddressesText}>Manage addresses</Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
@@ -100,6 +108,7 @@ export function ProfileScreen({
         <AccountRow icon="email" text={customerEmail ?? "Email not registered"} />
         <AccountRow icon="cash-multiple" text="Cash on delivery enabled" />
         <AccountRow icon="history" text={`${orderCount} saved orders`} />
+        <AccountRow icon="logout" text="Use logout below to return to login" />
       </View>
 
       <Pressable onPress={onLogout} style={styles.logout}>
@@ -271,6 +280,21 @@ const styles = StyleSheet.create({
     color: colors.inkSoft,
     fontFamily: fonts.semibold,
     fontSize: 14
+  },
+  manageAddresses: {
+    height: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
+    marginTop: 10
+  },
+  manageAddressesText: {
+    color: colors.primaryDark,
+    fontFamily: fonts.bold,
+    fontSize: 13
   },
   logout: {
     flexDirection: "row",

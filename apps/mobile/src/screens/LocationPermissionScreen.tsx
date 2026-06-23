@@ -8,7 +8,7 @@ import { illustrations } from "../theme/assets";
 import { colors } from "../theme/colors";
 import { fonts, radius } from "../theme/typography";
 
-type PermissionState = "idle" | "requesting" | "granted" | "denied" | "demo";
+type PermissionState = "idle" | "requesting" | "granted" | "denied";
 
 type LocationPermissionScreenProps = {
   onBack: () => void;
@@ -41,19 +41,12 @@ export function LocationPermissionScreen({
       return;
     }
 
-    setPermissionState("demo");
-    setMessage("Using demo area because location was not enabled.");
-    onContinue();
-  };
-
-  const useDemoArea = () => {
-    setPermissionState("demo");
-    setMessage("Using demo area: nearby pilot shops within 100m.");
-    onContinue();
+    setPermissionState("denied");
+    setMessage("Location is mandatory. Please allow access to continue ordering.");
   };
 
   const isBusy = permissionState === "requesting";
-  const ready = permissionState === "granted" || permissionState === "demo";
+  const ready = permissionState === "granted";
 
   return (
     <Screen scroll contentStyle={styles.content}>
@@ -97,12 +90,10 @@ export function LocationPermissionScreen({
           onPress={requestLocation}
           style={{ marginBottom: 10 }}
         />
-        <Button label="Continue with demo area" onPress={useDemoArea} variant="ghost" />
-
         <View style={styles.tip}>
           <MaterialCommunityIcons color={colors.muted} name="information-outline" size={15} />
           <Text style={styles.tipText}>
-            For Expo Go and simulators, the demo area skips device permissions.
+            Location permission is required so vendors can deliver to the right place.
           </Text>
         </View>
       </View>

@@ -26,6 +26,10 @@ import {
 import { CartScreen } from "./src/screens/CartScreen";
 import { CheckoutScreen } from "./src/screens/CheckoutScreen";
 import {
+  AddressBookScreen,
+  type SavedAddress
+} from "./src/screens/AddressBookScreen";
+import {
   CustomerOnboardingScreen,
   type CustomerOnboardingProfile
 } from "./src/screens/CustomerOnboardingScreen";
@@ -57,6 +61,7 @@ type AppScreen =
   | "store"
   | "cart"
   | "checkout"
+  | "addresses"
   | "orders"
   | "tracking"
   | "profile";
@@ -65,6 +70,7 @@ type RootStackParamList = Record<AppScreen, undefined>;
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const onboardingStorageKey = "bazzato.customer.onboarding";
+const addressesStorageKey = "bazzato.customer.addresses";
 const tokenRefreshSkewMs = 60 * 1000;
 
 const PHONE_WIDTH = 412;
@@ -147,6 +153,8 @@ export default function App() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | undefined>();
   const [customerProfile, setCustomerProfile] =
     useState<CustomerOnboardingProfile | null>(null);
   const [hasLoadedOnboarding, setHasLoadedOnboarding] = useState(false);
@@ -171,9 +179,27 @@ export default function App() {
     }
   };
 
+  const selectedAddress =
+    addresses.find((address) => address.id === selectedAddressId) ?? addresses[0];
+
+  const loadShops = async () => {
+    try {
+      const nextShops = await getNearbyShops();
+      setShops(nextShops);
+      setSelectedShop((current) => current ?? nextShops[0] ?? null);
+    } catch {
+      setShops(fallbackStores);
+      setSelectedShop((current) => current ?? fallbackStores[0] ?? null);
+    }
+  };
+
   useEffect(() => {
-    Promise.all([AsyncStorage.getItem(onboardingStorageKey), loadStoredSession()])
-      .then(([value, storedSession]) => {
+    Promise.all([
+      AsyncStorage.getItem(onboardingStorageKey),
+      AsyncStorage.getItem(addressesStorageKey),
+      loadStoredSession()
+    ])
+      .then(([value, storedAddresses, storedSession]) => {
         if (!value) {
           if (storedSession && new Date(storedSession.refreshTokenExpiresAt).getTime() > Date.now()) {
             setSession(storedSession);
@@ -186,6 +212,22 @@ export default function App() {
         if (isCompleteCustomerProfile(profile)) {
           setCustomerProfile(profile);
           setDeliveryAddress(profile.address);
+          const parsedAddresses = storedAddresses
+            ? (JSON.parse(storedAddresses) as SavedAddress[])
+            : [];
+
+          if (parsedAddresses.length > 0) {
+            setAddresses(parsedAddresses);
+            setSelectedAddressId(parsedAddresses[0].id);
+          } else {
+            const initialAddress = {
+              id: "address-primary",
+              label: "Home",
+              line: profile.address
+            };
+            setAddresses([initialAddress]);
+            setSelectedAddressId(initialAddress.id);
+          }
         }
 
         if (storedSession && new Date(storedSession.refreshTokenExpiresAt).getTime() > Date.now()) {
@@ -197,25 +239,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
+    void loadShops();
+    const timer = setInterval(() => {
+      void loadShops();
+    }, 5000);
 
-    getNearbyShops()
-      .then((nextShops) => {
-        if (isMounted) {
-          setShops(nextShops);
-          setSelectedShop((current) => current ?? nextShops[0] ?? null);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setShops(fallbackStores);
-          setSelectedShop((current) => current ?? fallbackStores[0] ?? null);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -279,11 +308,56 @@ export default function App() {
 
   const completeOnboarding = async (profile: CustomerOnboardingProfile) => {
     await registerCustomer(profile);
+    const initialAddress = {
+      id: "address-primary",
+      label: "Home",
+      line: profile.address
+    };
     setCustomerProfile(profile);
     setDeliveryAddress(profile.address);
+    setAddresses([initialAddress]);
+    setSelectedAddressId(initialAddress.id);
     void AsyncStorage.setItem(onboardingStorageKey, JSON.stringify(profile)).catch(
       () => undefined
     );
+    void AsyncStorage.setItem(addressesStorageKey, JSON.stringify([initialAddress])).catch(
+      () => undefined
+    );
+  };
+
+  const addAddress = (address: SavedAddress) => {
+    const nextAddresses = [address, ...addresses];
+    setAddresses(nextAddresses);
+    setSelectedAddressId(address.id);
+    setDeliveryAddress(address.line);
+    setDeliveryLocation(
+      typeof address.latitude === "number" && typeof address.longitude === "number"
+        ? { latitude: address.latitude, longitude: address.longitude }
+        : deliveryLocation
+    );
+    void AsyncStorage.setItem(addressesStorageKey, JSON.stringify(nextAddresses)).catch(
+      () => undefined
+    );
+  };
+
+  const selectAddress = (addressId: string) => {
+    const nextAddress = addresses.find((address) => address.id === addressId);
+
+    if (!nextAddress) {
+      return;
+    }
+
+    setSelectedAddressId(addressId);
+    setDeliveryAddress(nextAddress.line);
+    if (
+      typeof nextAddress.latitude === "number" &&
+      typeof nextAddress.longitude === "number"
+    ) {
+      setDeliveryLocation({
+        latitude: nextAddress.latitude,
+        longitude: nextAddress.longitude
+      });
+    }
   };
 
   const removeFromCart = (productId: string) => {
@@ -306,9 +380,9 @@ export default function App() {
       lines: cartSummary.lines,
       phone: session?.phone ?? customerProfile?.phone ?? "9876543210",
       shopId: selectedShop?.id ?? env.defaultShopId,
-      deliveryAddress,
-      deliveryLatitude: deliveryLocation?.latitude,
-      deliveryLongitude: deliveryLocation?.longitude,
+      deliveryAddress: selectedAddress?.line ?? deliveryAddress,
+      deliveryLatitude: selectedAddress?.latitude ?? deliveryLocation?.latitude,
+      deliveryLongitude: selectedAddress?.longitude ?? deliveryLocation?.longitude,
       token: (await getActiveSession())?.token ?? null
     });
     nextOrder.shopName = nextOrder.shopName ?? selectedShop?.name;
@@ -434,6 +508,7 @@ export default function App() {
                 onOpenStore={(shop) => openShop(shop, navigation.navigate)}
                 onOrders={() => navigation.navigate("orders")}
                 onProfile={() => navigation.navigate("profile")}
+                onRefresh={loadShops}
                 onSearch={() => navigation.navigate("search")}
                 selectedShop={selectedShop}
                 shops={shops}
@@ -485,11 +560,35 @@ export default function App() {
             {({ navigation }) => (
               <CheckoutScreen
                 cartSummary={cartSummary}
-                deliveryAddress={deliveryAddress}
+                deliveryAddress={selectedAddress?.line ?? deliveryAddress}
                 onBack={() => navigation.navigate("cart")}
-                onDeliveryAddressChange={setDeliveryAddress}
+                onAddressBook={() => navigation.navigate("addresses")}
+                onDeliveryAddressChange={(address) => {
+                  setDeliveryAddress(address);
+                  if (selectedAddress) {
+                    const nextAddresses = addresses.map((item) =>
+                      item.id === selectedAddress.id ? { ...item, line: address } : item
+                    );
+                    setAddresses(nextAddresses);
+                    void AsyncStorage.setItem(addressesStorageKey, JSON.stringify(nextAddresses)).catch(
+                      () => undefined
+                    );
+                  }
+                }}
                 onPlaceOrder={() => placeOrder(navigation.replace)}
                 selectedShop={selectedShop}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="addresses">
+            {({ navigation }) => (
+              <AddressBookScreen
+                addresses={addresses}
+                currentLocation={deliveryLocation}
+                onAddAddress={addAddress}
+                onBack={() => navigation.goBack()}
+                onSelectAddress={selectAddress}
+                selectedAddressId={selectedAddressId}
               />
             )}
           </Stack.Screen>
@@ -529,8 +628,10 @@ export default function App() {
                 onHome={() => navigation.replace("home")}
                 onLogout={() => logout(navigation.replace)}
                 onOrders={() => navigation.navigate("orders")}
+                onAddresses={() => navigation.navigate("addresses")}
                 onSearch={() => navigation.navigate("search")}
-                deliveryAddress={deliveryAddress}
+                addressCount={addresses.length}
+                deliveryAddress={selectedAddress?.line ?? deliveryAddress}
                 customerEmail={customerProfile?.email}
                 customerName={customerProfile?.name}
                 order={order}

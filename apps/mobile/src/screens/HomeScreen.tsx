@@ -10,7 +10,7 @@ import {
 
 import { BottomNav } from "../components/BottomNav";
 import { CartBar } from "../components/CartBar";
-import { Screen, Stars, Tag } from "../components/ui";
+import { IconButton, Screen, Stars, Tag } from "../components/ui";
 import type { Store } from "../data/catalog";
 import { categoryShots, foodShots, illustrations } from "../theme/assets";
 import { colors } from "../theme/colors";
@@ -24,6 +24,7 @@ type HomeScreenProps = {
   onOpenStore: (shop: Store) => void;
   onOrders: () => void;
   onProfile: () => void;
+  onRefresh: () => void;
   onSearch: () => void;
   selectedShop: Store | null;
   shops: Store[];
@@ -47,6 +48,7 @@ export function HomeScreen({
   onOpenStore,
   onOrders,
   onProfile,
+  onRefresh,
   onSearch,
   selectedShop,
   shops
@@ -128,7 +130,10 @@ export function HomeScreen({
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Shops near you</Text>
-        <Text style={styles.sectionMeta}>{shops.length} open</Text>
+        <View style={styles.sectionActions}>
+          <Text style={styles.sectionMeta}>{shops.length} open</Text>
+          <IconButton icon="refresh" onPress={onRefresh} />
+        </View>
       </View>
 
       <View style={styles.shopList}>
@@ -323,6 +328,11 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontFamily: fonts.semibold,
     fontSize: 12.5
+  },
+  sectionActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10
   },
   catRow: {
     gap: 16,

@@ -54,6 +54,18 @@ model RefreshSession {
   createdAt   DateTime @default(now())
 }
 
+model AuditLog {
+  id           String   @id @default(cuid())
+  method       String
+  path         String
+  statusCode   Int
+  userId       String?
+  phone        String?
+  requestJson  Json?
+  errorMessage String
+  createdAt    DateTime @default(now())
+}
+
 model Shop {
   id             String    @id @default(cuid())
   name           String
