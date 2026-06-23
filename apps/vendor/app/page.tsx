@@ -117,8 +117,10 @@ export default function VendorHome() {
   const [adminRefreshToken, setAdminRefreshToken] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
   const [adminOtp, setAdminOtp] = useState("");
+  const [adminOtpSent, setAdminOtpSent] = useState(false);
   const [loginPhone, setLoginPhone] = useState("");
   const [loginOtp, setLoginOtp] = useState("");
+  const [loginOtpSent, setLoginOtpSent] = useState(false);
   const [signupOtpSent, setSignupOtpSent] = useState(false);
   const [onboardingForm, setOnboardingForm] = useState(emptyOnboarding);
   const [isLoading, setIsLoading] = useState(false);
@@ -341,6 +343,7 @@ export default function VendorHome() {
         throw new Error(data.error ?? "Unable to send OTP");
       }
 
+      setLoginOtpSent(true);
       setError(data.message ?? "OTP sent.");
     } catch (otpError) {
       setError(otpError instanceof Error ? otpError.message : "Unable to send OTP");
@@ -365,6 +368,7 @@ export default function VendorHome() {
         throw new Error(data.error ?? "Unable to send OTP");
       }
 
+      setAdminOtpSent(true);
       setError(data.message ?? "OTP sent.");
     } catch (otpError) {
       setError(otpError instanceof Error ? otpError.message : "Unable to send OTP");
@@ -642,31 +646,54 @@ export default function VendorHome() {
                   inputMode="tel"
                   minLength={10}
                   value={adminPhone}
-                  onChange={(event) => setAdminPhone(event.target.value.replace(/\D/g, ""))}
+                  onChange={(event) => {
+                    setAdminOtp("");
+                    setAdminOtpSent(false);
+                    setAdminPhone(event.target.value.replace(/\D/g, ""));
+                  }}
                 />
               </label>
-              <label>
-                OTP
-                <input
-                  required
-                  inputMode="numeric"
-                  maxLength={4}
-                  minLength={4}
-                  value={adminOtp}
-                  onChange={(event) => setAdminOtp(event.target.value.replace(/\D/g, ""))}
-                />
-              </label>
-              <button
-                className="secondaryButton"
-                disabled={isLoading || adminPhone.length < 10}
-                onClick={requestAdminOtp}
-                type="button"
-              >
-                Send OTP
-              </button>
-              <button className="primaryButton" disabled={isLoading} type="submit">
-                {isLoading ? "Logging in..." : "Login to admin"}
-              </button>
+              {!adminOtpSent ? (
+                <button
+                  className="secondaryButton"
+                  disabled={isLoading || adminPhone.length < 10}
+                  onClick={requestAdminOtp}
+                  type="button"
+                >
+                  Send OTP
+                </button>
+              ) : (
+                <>
+                  <label>
+                    Enter OTP
+                    <input
+                      autoFocus
+                      required
+                      inputMode="numeric"
+                      maxLength={4}
+                      minLength={4}
+                      placeholder="1234"
+                      value={adminOtp}
+                      onChange={(event) => setAdminOtp(event.target.value.replace(/\D/g, ""))}
+                    />
+                  </label>
+                  <button
+                    className="secondaryButton"
+                    disabled={isLoading || adminPhone.length < 10}
+                    onClick={requestAdminOtp}
+                    type="button"
+                  >
+                    Resend OTP
+                  </button>
+                  <button
+                    className="primaryButton"
+                    disabled={isLoading || adminOtp.length !== 4}
+                    type="submit"
+                  >
+                    {isLoading ? "Logging in..." : "Login to admin"}
+                  </button>
+                </>
+              )}
             </form>
           ) : view === "login" ? (
             <form className="authForm" key="login" onSubmit={loginVendor}>
@@ -677,31 +704,54 @@ export default function VendorHome() {
                   inputMode="tel"
                   minLength={10}
                   value={loginPhone}
-                  onChange={(event) => setLoginPhone(event.target.value.replace(/\D/g, ""))}
+                  onChange={(event) => {
+                    setLoginOtp("");
+                    setLoginOtpSent(false);
+                    setLoginPhone(event.target.value.replace(/\D/g, ""));
+                  }}
                 />
               </label>
-              <label>
-                OTP
-                <input
-                  required
-                  inputMode="numeric"
-                  maxLength={4}
-                  minLength={4}
-                  value={loginOtp}
-                  onChange={(event) => setLoginOtp(event.target.value.replace(/\D/g, ""))}
-                />
-              </label>
-              <button
-                className="secondaryButton"
-                disabled={isLoading || loginPhone.length < 10}
-                onClick={requestVendorLoginOtp}
-                type="button"
-              >
-                Send OTP
-              </button>
-              <button className="primaryButton" disabled={isLoading} type="submit">
-                {isLoading ? "Logging in..." : "Login to dashboard"}
-              </button>
+              {!loginOtpSent ? (
+                <button
+                  className="secondaryButton"
+                  disabled={isLoading || loginPhone.length < 10}
+                  onClick={requestVendorLoginOtp}
+                  type="button"
+                >
+                  Send OTP
+                </button>
+              ) : (
+                <>
+                  <label>
+                    Enter OTP
+                    <input
+                      autoFocus
+                      required
+                      inputMode="numeric"
+                      maxLength={4}
+                      minLength={4}
+                      placeholder="1234"
+                      value={loginOtp}
+                      onChange={(event) => setLoginOtp(event.target.value.replace(/\D/g, ""))}
+                    />
+                  </label>
+                  <button
+                    className="secondaryButton"
+                    disabled={isLoading || loginPhone.length < 10}
+                    onClick={requestVendorLoginOtp}
+                    type="button"
+                  >
+                    Resend OTP
+                  </button>
+                  <button
+                    className="primaryButton"
+                    disabled={isLoading || loginOtp.length !== 4}
+                    type="submit"
+                  >
+                    {isLoading ? "Logging in..." : "Login to dashboard"}
+                  </button>
+                </>
+              )}
             </form>
           ) : (
             <form className="authForm" key="onboarding" onSubmit={onboardVendor}>
