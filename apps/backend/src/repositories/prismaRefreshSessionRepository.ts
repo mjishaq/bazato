@@ -17,6 +17,13 @@ const roleFromPrisma = Object.fromEntries(
 
 export class PrismaRefreshSessionRepository implements RefreshSessionRepository {
   async createSession(input: RefreshSessionInput) {
+    await prisma.refreshSession.deleteMany({
+      where: {
+        expiresAt: {
+          lte: new Date()
+        }
+      }
+    });
     const user = await prisma.user.upsert({
       where: { keycloakSubject: input.userId },
       update: {
@@ -51,6 +58,13 @@ export class PrismaRefreshSessionRepository implements RefreshSessionRepository 
   }
 
   async consumeSession(tokenHash: string, now: Date) {
+    await prisma.refreshSession.deleteMany({
+      where: {
+        expiresAt: {
+          lte: now
+        }
+      }
+    });
     const session = await prisma.refreshSession.findUnique({
       where: { tokenHash },
       include: { user: true }

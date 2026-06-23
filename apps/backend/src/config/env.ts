@@ -37,3 +37,7 @@ if (env.NODE_ENV === "production" && env.JWT_SECRET === "development-only-secret
 if (env.NODE_ENV === "production" && env.DATA_SOURCE !== "postgres") {
   throw new Error("DATA_SOURCE=postgres must be set in production.");
 }
+
+if (env.NODE_ENV === "production" && !env.CORS_ORIGIN) {
+  throw new Error("CORS_ORIGIN must be explicitly set in production.");
+}

@@ -28,15 +28,13 @@ const createOrderSchema = z.object({
 
 const statusSchema = z.object({
   status: z.enum([
-    "placed",
-    "accepted",
-    "preparing",
-    "ready",
-    "completed",
-    "rejected",
     "cancelled"
   ])
 });
+
+function routeParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 ordersRouter.post("/", async (req: AuthenticatedRequest, res) => {
   const parsed = createOrderSchema.safeParse(req.body);
@@ -68,18 +66,30 @@ ordersRouter.get("/", async (req: AuthenticatedRequest, res) => {
   res.json({ orders });
 });
 
-ordersRouter.get("/:orderId", async (req, res) => {
-  const order = await services.orders.getOrder(req.params.orderId);
+ordersRouter.get("/:orderId", async (req: AuthenticatedRequest, res) => {
+  const orderId = routeParam(req.params.orderId);
+
+  if (!orderId) {
+    res.status(400).json({ error: "Order id is required" });
+    return;
+  }
+
+  const order = await services.orders.getOrder(orderId);
 
   if (!order) {
     res.status(404).json({ error: "Order not found" });
     return;
   }
 
+  if (order.userId !== req.auth?.sub) {
+    res.status(403).json({ error: "Cannot access another customer order" });
+    return;
+  }
+
   res.json({ order });
 });
 
-ordersRouter.patch("/:orderId/status", async (req, res) => {
+ordersRouter.patch("/:orderId/status", async (req: AuthenticatedRequest, res) => {
   const parsed = statusSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -87,15 +97,34 @@ ordersRouter.patch("/:orderId/status", async (req, res) => {
     return;
   }
 
-  const order = await services.orders.updateStatus(
-    req.params.orderId,
-    parsed.data.status as OrderStatus
-  );
+  const orderId = routeParam(req.params.orderId);
 
-  if (!order) {
+  if (!orderId) {
+    res.status(400).json({ error: "Order id is required" });
+    return;
+  }
+
+  const currentOrder = await services.orders.getOrder(orderId);
+
+  if (!currentOrder) {
     res.status(404).json({ error: "Order not found" });
     return;
   }
+
+  if (currentOrder.userId !== req.auth?.sub) {
+    res.status(403).json({ error: "Cannot update another customer order" });
+    return;
+  }
+
+  if (!["placed", "accepted"].includes(currentOrder.status)) {
+    res.status(409).json({ error: "Order can no longer be cancelled" });
+    return;
+  }
+
+  const order = await services.orders.updateStatus(
+    orderId,
+    parsed.data.status as OrderStatus
+  );
 
   res.json({ order });
 });

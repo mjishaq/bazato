@@ -43,6 +43,7 @@ export class MemoryCatalogRepository implements CatalogRepository {
   async listShops(limit: number) {
     return shops
       .slice()
+      .filter((shop) => shop.isOpen)
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
       .slice(0, limit);
   }
@@ -68,17 +69,23 @@ export class MemoryCatalogRepository implements CatalogRepository {
     const category = filters.category ?? "All";
 
     return products.filter((product) => {
+      const shop = shops.find((item) => item.id === product.storeId);
       const matchesShop = !filters.shopId || product.storeId === filters.shopId;
+      const matchesOpenShop = shop?.isOpen ?? false;
       const matchesCategory = category === "All" || product.category === category;
       const matchesQuery = product.name.toLowerCase().includes(query);
 
-      return matchesShop && matchesCategory && matchesQuery;
+      return matchesShop && matchesOpenShop && matchesCategory && matchesQuery;
     });
   }
 
   async getProductsByIds(productIds: string[]) {
     const productIdSet = new Set(productIds);
-    return products.filter((product) => productIdSet.has(product.id));
+    return products.filter((product) => {
+      const shop = shops.find((item) => item.id === product.storeId);
+
+      return productIdSet.has(product.id) && Boolean(shop?.isOpen);
+    });
   }
 
   async upsertShop(input: ShopInput) {

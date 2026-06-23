@@ -47,6 +47,7 @@ function mapProduct(
 export class PrismaCatalogRepository implements CatalogRepository {
   async listShops(limit: number) {
     const rows = await prisma.shop.findMany({
+      where: { isOpen: true },
       orderBy: [{ isOpen: "desc" }, { rating: "desc" }],
       take: limit
     });
@@ -78,6 +79,9 @@ export class PrismaCatalogRepository implements CatalogRepository {
     const rows = await prisma.product.findMany({
       where: {
         shopId: filters.shopId,
+        shop: {
+          isOpen: true
+        },
         category:
           filters.category && filters.category !== "All" ? filters.category : undefined,
         name: filters.query
@@ -100,6 +104,9 @@ export class PrismaCatalogRepository implements CatalogRepository {
       where: {
         id: {
           in: productIds
+        },
+        shop: {
+          isOpen: true
         }
       }
     });

@@ -38,16 +38,27 @@ const statusSchema = z.object({
 const onboardingSchema = z.object({
   category: z.string().min(1),
   ownerPhone: z.string().min(10),
+  otp: z.string().length(4),
   shopId: z.string().min(1).optional(),
   shopName: z.string().min(1)
 });
 
 const loginSchema = z.object({
-  ownerPhone: z.string().min(10)
+  ownerPhone: z.string().min(10),
+  otp: z.string().length(4)
 });
 
 const adminLoginSchema = z.object({
+  phone: z.string().min(10),
+  otp: z.string().length(4)
+});
+
+const phoneOnlySchema = z.object({
   phone: z.string().min(10)
+});
+
+const ownerPhoneSchema = z.object({
+  ownerPhone: z.string().min(10)
 });
 
 const refreshSchema = z.object({
@@ -63,6 +74,11 @@ vendorRouter.post("/onboarding", async (req, res) => {
 
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid vendor onboarding payload" });
+    return;
+  }
+
+  if (!(await services.auth.verifyOtpForPhone(parsed.data.ownerPhone, parsed.data.otp))) {
+    res.status(401).json({ error: "Invalid OTP" });
     return;
   }
 
@@ -82,6 +98,35 @@ vendorRouter.post("/onboarding", async (req, res) => {
   res.status(201).json({ shop, ...tokens });
 });
 
+vendorRouter.post("/onboarding/request-otp", async (req, res) => {
+  const parsed = ownerPhoneSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid phone is required" });
+    return;
+  }
+
+  res.json(await services.auth.requestOtpForPhone(parsed.data.ownerPhone));
+});
+
+vendorRouter.post("/request-otp", async (req, res) => {
+  const parsed = ownerPhoneSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid phone is required" });
+    return;
+  }
+
+  const shop = await services.catalog.getShopByOwnerPhone(parsed.data.ownerPhone);
+
+  if (!shop) {
+    res.status(404).json({ error: "No vendor shop found for this phone" });
+    return;
+  }
+
+  res.json(await services.auth.requestOtpForPhone(parsed.data.ownerPhone));
+});
+
 vendorRouter.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
 
@@ -97,6 +142,11 @@ vendorRouter.post("/login", async (req, res) => {
     return;
   }
 
+  if (!(await services.auth.verifyOtpForPhone(parsed.data.ownerPhone, parsed.data.otp))) {
+    res.status(401).json({ error: "Invalid OTP" });
+    return;
+  }
+
   const tokens = await services.tokens.createTokenPair({
     phone: parsed.data.ownerPhone,
     role: "vendor",
@@ -105,6 +155,22 @@ vendorRouter.post("/login", async (req, res) => {
   });
 
   res.json({ shop, ...tokens });
+});
+
+vendorRouter.post("/admin/request-otp", async (req, res) => {
+  const parsed = phoneOnlySchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid admin phone is required" });
+    return;
+  }
+
+  if (!env.ADMIN_PHONE || parsed.data.phone !== env.ADMIN_PHONE) {
+    res.status(403).json({ error: "Admin access is not configured for this phone" });
+    return;
+  }
+
+  res.json(await services.auth.requestOtpForPhone(parsed.data.phone));
 });
 
 vendorRouter.post("/admin/login", async (req, res) => {
@@ -117,6 +183,11 @@ vendorRouter.post("/admin/login", async (req, res) => {
 
   if (!env.ADMIN_PHONE || parsed.data.phone !== env.ADMIN_PHONE) {
     res.status(403).json({ error: "Admin access is not configured for this phone" });
+    return;
+  }
+
+  if (!(await services.auth.verifyOtpForPhone(parsed.data.phone, parsed.data.otp))) {
+    res.status(401).json({ error: "Invalid OTP" });
     return;
   }
 

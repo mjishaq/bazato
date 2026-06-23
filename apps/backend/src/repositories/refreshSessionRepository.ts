@@ -22,7 +22,16 @@ export interface RefreshSessionRepository {
 const memorySessions = new Map<string, RefreshSessionRecord>();
 
 export class MemoryRefreshSessionRepository implements RefreshSessionRepository {
+  private pruneExpired(now = new Date()) {
+    for (const [tokenHash, session] of memorySessions.entries()) {
+      if (session.expiresAt <= now) {
+        memorySessions.delete(tokenHash);
+      }
+    }
+  }
+
   async createSession(input: RefreshSessionInput) {
+    this.pruneExpired();
     const session = {
       ...input,
       id: `refresh-${input.tokenHash.slice(0, 12)}`
@@ -34,6 +43,7 @@ export class MemoryRefreshSessionRepository implements RefreshSessionRepository 
   }
 
   async consumeSession(tokenHash: string, now: Date) {
+    this.pruneExpired(now);
     const session = memorySessions.get(tokenHash);
     memorySessions.delete(tokenHash);
 

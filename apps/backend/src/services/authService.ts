@@ -32,6 +32,19 @@ export class AuthService {
     };
   }
 
+  async requestOtpForPhone(phone: string) {
+    const result = await this.otpService.requestOtp(phone);
+
+    return {
+      phone,
+      ...result
+    };
+  }
+
+  verifyOtpForPhone(phone: string, otp: string) {
+    return this.otpService.verifyOtp(phone, otp);
+  }
+
   async verifyOtp(phone: string, otp: string) {
     const customer = await this.customerRepository.getCustomerByPhone(phone);
 

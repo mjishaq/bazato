@@ -101,6 +101,7 @@ const emptyProduct = {
 const emptyOnboarding = {
   category: "Bakala",
   ownerPhone: "",
+  otp: "",
   shopId: "",
   shopName: ""
 };
@@ -115,7 +116,9 @@ export default function VendorHome() {
   const [adminToken, setAdminToken] = useState("");
   const [adminRefreshToken, setAdminRefreshToken] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
+  const [adminOtp, setAdminOtp] = useState("");
   const [loginPhone, setLoginPhone] = useState("");
+  const [loginOtp, setLoginOtp] = useState("");
   const [onboardingForm, setOnboardingForm] = useState(emptyOnboarding);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -296,6 +299,78 @@ export default function VendorHome() {
     }
   };
 
+  const requestVendorSignupOtp = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/onboarding/request-otp`, {
+        body: JSON.stringify({ ownerPhone: onboardingForm.ownerPhone }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      });
+      const data = (await response.json()) as { error?: string; message?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to send OTP");
+      }
+
+      setError(data.message ?? "OTP sent.");
+    } catch (otpError) {
+      setError(otpError instanceof Error ? otpError.message : "Unable to send OTP");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const requestVendorLoginOtp = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/request-otp`, {
+        body: JSON.stringify({ ownerPhone: loginPhone }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      });
+      const data = (await response.json()) as { error?: string; message?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to send OTP");
+      }
+
+      setError(data.message ?? "OTP sent.");
+    } catch (otpError) {
+      setError(otpError instanceof Error ? otpError.message : "Unable to send OTP");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const requestAdminOtp = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${apiUrl}/vendor/admin/request-otp`, {
+        body: JSON.stringify({ phone: adminPhone }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      });
+      const data = (await response.json()) as { error?: string; message?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to send OTP");
+      }
+
+      setError(data.message ?? "OTP sent.");
+    } catch (otpError) {
+      setError(otpError instanceof Error ? otpError.message : "Unable to send OTP");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loginVendor = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
@@ -303,7 +378,7 @@ export default function VendorHome() {
 
     try {
       const response = await fetch(`${apiUrl}/vendor/login`, {
-        body: JSON.stringify({ ownerPhone: loginPhone }),
+        body: JSON.stringify({ ownerPhone: loginPhone, otp: loginOtp }),
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
@@ -333,7 +408,7 @@ export default function VendorHome() {
 
     try {
       const response = await fetch(`${apiUrl}/vendor/admin/login`, {
-        body: JSON.stringify({ phone: adminPhone }),
+        body: JSON.stringify({ phone: adminPhone, otp: adminOtp }),
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
@@ -568,6 +643,25 @@ export default function VendorHome() {
                   onChange={(event) => setAdminPhone(event.target.value.replace(/\D/g, ""))}
                 />
               </label>
+              <label>
+                OTP
+                <input
+                  required
+                  inputMode="numeric"
+                  maxLength={4}
+                  minLength={4}
+                  value={adminOtp}
+                  onChange={(event) => setAdminOtp(event.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+              <button
+                className="secondaryButton"
+                disabled={isLoading || adminPhone.length < 10}
+                onClick={requestAdminOtp}
+                type="button"
+              >
+                Send OTP
+              </button>
               <button className="primaryButton" disabled={isLoading} type="submit">
                 {isLoading ? "Logging in..." : "Login to admin"}
               </button>
@@ -584,6 +678,25 @@ export default function VendorHome() {
                   onChange={(event) => setLoginPhone(event.target.value.replace(/\D/g, ""))}
                 />
               </label>
+              <label>
+                OTP
+                <input
+                  required
+                  inputMode="numeric"
+                  maxLength={4}
+                  minLength={4}
+                  value={loginOtp}
+                  onChange={(event) => setLoginOtp(event.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+              <button
+                className="secondaryButton"
+                disabled={isLoading || loginPhone.length < 10}
+                onClick={requestVendorLoginOtp}
+                type="button"
+              >
+                Send OTP
+              </button>
               <button className="primaryButton" disabled={isLoading} type="submit">
                 {isLoading ? "Logging in..." : "Login to dashboard"}
               </button>
@@ -650,6 +763,30 @@ export default function VendorHome() {
                   }
                 />
               </label>
+              <label>
+                OTP
+                <input
+                  required
+                  inputMode="numeric"
+                  maxLength={4}
+                  minLength={4}
+                  value={onboardingForm.otp}
+                  onChange={(event) =>
+                    setOnboardingForm((current) => ({
+                      ...current,
+                      otp: event.target.value.replace(/\D/g, "")
+                    }))
+                  }
+                />
+              </label>
+              <button
+                className="secondaryButton"
+                disabled={isLoading || onboardingForm.ownerPhone.length < 10}
+                onClick={requestVendorSignupOtp}
+                type="button"
+              >
+                Send OTP
+              </button>
               <button className="primaryButton" disabled={isLoading} type="submit">
                 {isLoading ? "Creating..." : "Create shop and continue"}
               </button>

@@ -2,6 +2,33 @@ import type { NextFunction, Request, Response } from "express";
 
 import { env } from "../config/env.js";
 
+const sensitiveKeys = new Set([
+  "accessToken",
+  "apiKey",
+  "authorization",
+  "otp",
+  "password",
+  "refreshToken",
+  "token"
+]);
+
+function redactJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactJson(item));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+      key,
+      sensitiveKeys.has(key) ? "[REDACTED]" : redactJson(item)
+    ])
+  );
+}
+
 function getAuthContext(req: Request) {
   const auth = (req as Request & {
     appAuth?: { phone?: string; sub?: string };
@@ -40,7 +67,7 @@ async function writeAuditLog({
         method: req.method,
         path: req.originalUrl,
         phone: context.phone,
-        requestJson: req.body ?? undefined,
+        requestJson: req.body ? (redactJson(req.body) as never) : undefined,
         statusCode,
         userId: context.userId
       }
