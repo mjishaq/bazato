@@ -16,8 +16,16 @@ type ApiProduct = Product & {
   inStock: boolean;
 };
 
-export async function getNearbyShops() {
-  const data = await apiRequest<{ shops: ApiShop[] }>("/catalog/shops");
+export async function getNearbyShops(location?: {
+  latitude: number;
+  longitude: number;
+}) {
+  const query = location
+    ? `?latitude=${encodeURIComponent(location.latitude)}&longitude=${encodeURIComponent(
+        location.longitude
+      )}`
+    : "";
+  const data = await apiRequest<{ shops: ApiShop[] }>(`/catalog/shops${query}`);
 
   return data.shops.map<Store>((shop) => ({
     id: shop.id,

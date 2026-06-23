@@ -1,7 +1,8 @@
 import { env } from "./config/env.js";
 import type {
   CatalogRepository,
-  ProductFilters
+  ProductFilters,
+  ShopFilters
 } from "./repositories/catalogRepository.js";
 import { MemoryCatalogRepository } from "./repositories/catalogRepository.js";
 import type { CustomerRepository } from "./repositories/customerRepository.js";
@@ -27,8 +28,8 @@ class LazyPrismaCatalogRepository implements CatalogRepository {
     return this.repository;
   }
 
-  async listShops(limit: number) {
-    return (await this.getRepository()).listShops(limit);
+  async listShops(filters: ShopFilters) {
+    return (await this.getRepository()).listShops(filters);
   }
 
   async getShop(shopId: string) {

@@ -4,10 +4,32 @@ import type {
   CatalogRepository,
   ProductFilters,
   ProductInput,
+  ShopFilters,
   ShopInput
 } from "./catalogRepository.js";
 
-function mapShop(shop: Awaited<ReturnType<typeof prisma.shop.findFirst>>): Shop | null {
+type PrismaShop = NonNullable<Awaited<ReturnType<typeof prisma.shop.findFirst>>>;
+
+function distanceMetersBetween(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number }
+) {
+  const earthRadiusMeters = 6371000;
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const deltaLatitude = toRadians(to.latitude - from.latitude);
+  const deltaLongitude = toRadians(to.longitude - from.longitude);
+  const latitude1 = toRadians(from.latitude);
+  const latitude2 = toRadians(to.latitude);
+  const a =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(latitude1) *
+      Math.cos(latitude2) *
+      Math.sin(deltaLongitude / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function mapShop(shop: PrismaShop | null, distanceMeters?: number): Shop | null {
   if (!shop) {
     return null;
   }
@@ -16,7 +38,7 @@ function mapShop(shop: Awaited<ReturnType<typeof prisma.shop.findFirst>>): Shop 
     id: shop.id,
     name: shop.name,
     category: shop.category,
-    distanceMeters: shop.radiusMeters,
+    distanceMeters: Math.round(distanceMeters ?? shop.radiusMeters),
     etaMinutes: "15-20",
     rating: Number(shop.rating),
     isOpen: shop.isOpen
@@ -45,14 +67,57 @@ function mapProduct(
 }
 
 export class PrismaCatalogRepository implements CatalogRepository {
-  async listShops(limit: number) {
+  async listShops(filters: ShopFilters) {
+    const hasCustomerLocation =
+      typeof filters.latitude === "number" && typeof filters.longitude === "number";
     const rows = await prisma.shop.findMany({
       where: { isOpen: true },
       orderBy: [{ isOpen: "desc" }, { rating: "desc" }],
-      take: limit
+      take: hasCustomerLocation ? undefined : filters.limit
     });
 
-    return rows.map((row) => mapShop(row)).filter((shop): shop is Shop => Boolean(shop));
+    const customerLocation = hasCustomerLocation
+      ? { latitude: filters.latitude as number, longitude: filters.longitude as number }
+      : null;
+
+    const shopsWithDistance = rows
+      .map((row) => {
+        const shopLocation =
+          row.latitude !== null && row.longitude !== null
+            ? {
+                latitude: Number(row.latitude),
+                longitude: Number(row.longitude)
+              }
+            : null;
+        const distanceMeters =
+          customerLocation && shopLocation
+            ? distanceMetersBetween(customerLocation, shopLocation)
+            : undefined;
+
+        return {
+          distanceMeters,
+          row
+        };
+      })
+      .filter(({ distanceMeters, row }) => {
+        if (!customerLocation) {
+          return true;
+        }
+
+        return typeof distanceMeters === "number" && distanceMeters <= row.radiusMeters;
+      })
+      .sort((a, b) => {
+        if (typeof a.distanceMeters === "number" && typeof b.distanceMeters === "number") {
+          return a.distanceMeters - b.distanceMeters;
+        }
+
+        return Number(b.row.rating) - Number(a.row.rating);
+      })
+      .slice(0, filters.limit);
+
+    return shopsWithDistance
+      .map(({ row, distanceMeters }) => mapShop(row, distanceMeters))
+      .filter((shop): shop is Shop => Boolean(shop));
   }
 
   async getShop(shopId: string) {
@@ -127,6 +192,8 @@ export class PrismaCatalogRepository implements CatalogRepository {
       where: { id },
       update: {
         category: input.category,
+        latitude: input.latitude,
+        longitude: input.longitude,
         name: input.name,
         owner: {
           connectOrCreate: {
@@ -137,11 +204,14 @@ export class PrismaCatalogRepository implements CatalogRepository {
               role: "VENDOR"
             }
           }
-        }
+        },
+        radiusMeters: input.radiusMeters ?? 100
       },
       create: {
         id,
         category: input.category,
+        latitude: input.latitude,
+        longitude: input.longitude,
         name: input.name,
         owner: {
           connectOrCreate: {
@@ -152,7 +222,8 @@ export class PrismaCatalogRepository implements CatalogRepository {
               role: "VENDOR"
             }
           }
-        }
+        },
+        radiusMeters: input.radiusMeters ?? 100
       }
     });
 

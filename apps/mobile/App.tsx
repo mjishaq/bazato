@@ -189,7 +189,7 @@ export default function App() {
 
   const loadShops = async () => {
     try {
-      const nextShops = await getNearbyShops();
+      const nextShops = await getNearbyShops(deliveryLocation ?? undefined);
       setShops(nextShops);
       setSelectedShop((current) => current ?? nextShops[0] ?? null);
     } catch {
@@ -250,7 +250,7 @@ export default function App() {
     }, 5000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [deliveryLocation?.latitude, deliveryLocation?.longitude]);
 
   useEffect(() => {
     let isMounted = true;

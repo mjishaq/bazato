@@ -6,9 +6,15 @@ export const catalogRouter = Router();
 
 catalogRouter.get("/shops", async (req, res) => {
   const limit = Number(req.query.limit ?? 20);
+  const latitude = Number(req.query.latitude);
+  const longitude = Number(req.query.longitude);
 
   res.json({
-    shops: await services.catalog.listShops(limit)
+    shops: await services.catalog.listShops({
+      latitude: Number.isFinite(latitude) ? latitude : undefined,
+      limit,
+      longitude: Number.isFinite(longitude) ? longitude : undefined
+    })
   });
 });
 

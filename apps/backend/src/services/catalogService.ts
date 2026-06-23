@@ -2,14 +2,15 @@ import type {
   CatalogRepository,
   ProductFilters,
   ProductInput,
+  ShopFilters,
   ShopInput
 } from "../repositories/catalogRepository.js";
 
 export class CatalogService {
   constructor(private readonly catalogRepository: CatalogRepository) {}
 
-  listShops(limit: number) {
-    return this.catalogRepository.listShops(limit);
+  listShops(filters: ShopFilters) {
+    return this.catalogRepository.listShops(filters);
   }
 
   getShop(shopId: string) {

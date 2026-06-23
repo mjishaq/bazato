@@ -100,8 +100,11 @@ const emptyProduct = {
 
 const emptyOnboarding = {
   category: "Bakala",
+  latitude: "",
+  longitude: "",
   ownerPhone: "",
   otp: "",
+  radiusMeters: 100,
   shopId: "",
   shopName: ""
 };
@@ -260,6 +263,36 @@ export default function VendorHome() {
     }
   };
 
+  const useVendorCurrentLocation = () => {
+    setError("");
+
+    if (!navigator.geolocation) {
+      setError("Browser location is not available. Enter coordinates manually.");
+      return;
+    }
+
+    setIsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setOnboardingForm((current) => ({
+          ...current,
+          latitude: position.coords.latitude.toFixed(7),
+          longitude: position.coords.longitude.toFixed(7)
+        }));
+        setIsLoading(false);
+      },
+      () => {
+        setError("Unable to read location. Allow browser location or enter coordinates.");
+        setIsLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 30000,
+        timeout: 10000
+      }
+    );
+  };
+
   useEffect(() => {
     if (shopId && view === "dashboard") {
       void loadSummary(shopId);
@@ -278,8 +311,15 @@ export default function VendorHome() {
     setError("");
 
     try {
+      const latitude = Number(onboardingForm.latitude);
+      const longitude = Number(onboardingForm.longitude);
       const response = await fetch(`${apiUrl}/vendor/onboarding`, {
-        body: JSON.stringify(onboardingForm),
+        body: JSON.stringify({
+          ...onboardingForm,
+          latitude: Number.isFinite(latitude) ? latitude : undefined,
+          longitude: Number.isFinite(longitude) ? longitude : undefined,
+          radiusMeters: onboardingForm.radiusMeters
+        }),
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
@@ -800,6 +840,60 @@ export default function VendorHome() {
                   <option>Snacks</option>
                 </select>
               </label>
+              <div className="formRow">
+                <label>
+                  Latitude
+                  <input
+                    inputMode="decimal"
+                    placeholder="24.7135517"
+                    value={onboardingForm.latitude}
+                    onChange={(event) =>
+                      setOnboardingForm((current) => ({
+                        ...current,
+                        latitude: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Longitude
+                  <input
+                    inputMode="decimal"
+                    placeholder="46.6752957"
+                    value={onboardingForm.longitude}
+                    onChange={(event) =>
+                      setOnboardingForm((current) => ({
+                        ...current,
+                        longitude: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="formRow">
+                <label>
+                  Delivery radius meters
+                  <input
+                    min={1}
+                    type="number"
+                    value={onboardingForm.radiusMeters}
+                    onChange={(event) =>
+                      setOnboardingForm((current) => ({
+                        ...current,
+                        radiusMeters: Number(event.target.value)
+                      }))
+                    }
+                  />
+                </label>
+                <button
+                  className="secondaryButton"
+                  disabled={isLoading}
+                  onClick={useVendorCurrentLocation}
+                  type="button"
+                >
+                  Use current location
+                </button>
+              </div>
               <label>
                 Owner mobile number
                 <input

@@ -20,15 +20,24 @@ export type ProductInput = {
   inStock: boolean;
 };
 
+export type ShopFilters = {
+  latitude?: number;
+  longitude?: number;
+  limit: number;
+};
+
 export type ShopInput = {
   id?: string;
   name: string;
   category: string;
+  latitude?: number;
+  longitude?: number;
   ownerPhone: string;
+  radiusMeters?: number;
 };
 
 export interface CatalogRepository {
-  listShops(limit: number): Promise<Shop[]>;
+  listShops(filters: ShopFilters): Promise<Shop[]>;
   getShop(shopId: string): Promise<Shop | null>;
   getShopByOwnerPhone(phone: string): Promise<Shop | null>;
   listProducts(filters?: ProductFilters): Promise<Product[]>;
@@ -40,7 +49,7 @@ export interface CatalogRepository {
 export class MemoryCatalogRepository implements CatalogRepository {
   private readonly shopOwnerPhones = new Map<string, string>();
 
-  async listShops(limit: number) {
+  async listShops({ limit }: ShopFilters) {
     return shops
       .slice()
       .filter((shop) => shop.isOpen)

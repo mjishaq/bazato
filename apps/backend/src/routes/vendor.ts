@@ -37,8 +37,11 @@ const statusSchema = z.object({
 
 const onboardingSchema = z.object({
   category: z.string().min(1),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   ownerPhone: z.string().min(10),
   otp: z.string().length(4),
+  radiusMeters: z.number().int().positive().max(5000).optional(),
   shopId: z.string().min(1).optional(),
   shopName: z.string().min(1)
 });
@@ -85,8 +88,11 @@ vendorRouter.post("/onboarding", async (req, res) => {
   const shop = await services.catalog.upsertShop({
     category: parsed.data.category,
     id: parsed.data.shopId,
+    latitude: parsed.data.latitude,
+    longitude: parsed.data.longitude,
     name: parsed.data.shopName,
-    ownerPhone: parsed.data.ownerPhone
+    ownerPhone: parsed.data.ownerPhone,
+    radiusMeters: parsed.data.radiusMeters ?? 100
   });
   const tokens = await services.tokens.createTokenPair({
     phone: parsed.data.ownerPhone,
@@ -227,7 +233,7 @@ vendorRouter.get(
   "/admin/summary",
   requireAppRole("admin"),
   async (_req: AppAuthenticatedRequest, res) => {
-    const shops = await services.catalog.listShops(100);
+    const shops = await services.catalog.listShops({ limit: 100 });
     const shopSummaries = await Promise.all(
       shops.map(async (shop) => {
         const [products, orders] = await Promise.all([
