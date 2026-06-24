@@ -143,7 +143,6 @@ export function CheckoutScreen({
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Order summary</Text>
         <SummaryLine label="Item total" value={formatMoney(cartSummary.subtotal)} />
-        <SummaryLine label="Delivery fee" value={formatMoney(cartSummary.deliveryFee)} />
         <SummaryLine label="Savings" value={`- ${formatMoney(cartSummary.savings)}`} success />
         <View style={styles.totalLine}>
           <Text style={styles.totalLabel}>Total due</Text>

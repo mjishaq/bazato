@@ -194,6 +194,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
         },
         category:
           filters.category && filters.category !== "All" ? filters.category : undefined,
+        inStock: filters.includeOutOfStock ? undefined : true,
         name: filters.query
           ? {
               contains: filters.query,
@@ -215,6 +216,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
         id: {
           in: productIds
         },
+        inStock: true,
         shop: {
           isOpen: true
         }

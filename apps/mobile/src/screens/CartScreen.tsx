@@ -170,7 +170,6 @@ export function CartScreen({
 
       <View style={styles.billCard}>
         <BillLine label="Item total" value={formatMoney(cartSummary.subtotal)} />
-        <BillLine label="Delivery fee" value={formatMoney(cartSummary.deliveryFee)} />
         <BillLine label="You save" value={`- ${formatMoney(cartSummary.savings)}`} highlight />
         <View style={styles.totalLine}>
           <Text style={styles.totalLabel}>Total</Text>

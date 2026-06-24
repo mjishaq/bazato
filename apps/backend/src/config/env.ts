@@ -35,7 +35,7 @@ const envSchema = z.object({
   CATALOG_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(5000),
   ORDER_ID_PREFIX: z.string().min(1).default("BZ"),
   DEFAULT_SHOP_ID: z.string().min(1).default("fresh-mart"),
-  DEFAULT_DELIVERY_FEE: z.coerce.number().int().nonnegative().default(20),
+  DEFAULT_DELIVERY_FEE: z.coerce.number().int().nonnegative().default(0),
   ADMIN_PHONE: z.string().optional(),
   SMS_PROVIDER_API_KEY: z.string().optional(),
   PUSH_PROVIDER_API_KEY: z.string().optional()

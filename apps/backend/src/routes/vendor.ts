@@ -16,7 +16,7 @@ const productSchema = z.object({
   id: z.string().min(1).optional().or(z.literal("")),
   category: z.string().min(1),
   inStock: z.boolean(),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: z.string().url().optional().or(z.string().startsWith("data:image/")).or(z.literal("")),
   mrp: z.number().int().nonnegative(),
   name: z.string().min(1),
   price: z.number().int().nonnegative(),
@@ -80,6 +80,15 @@ vendorRouter.post("/onboarding", async (req, res) => {
     return;
   }
 
+  const existingShop = await services.catalog.getShopByOwnerPhone(parsed.data.ownerPhone);
+
+  if (existingShop) {
+    res.status(409).json({
+      error: "This phone number is already used. Please use a unique phone number or login."
+    });
+    return;
+  }
+
   if (!(await services.auth.verifyOtpForPhone(parsed.data.ownerPhone, parsed.data.otp))) {
     res.status(401).json({ error: "Invalid OTP" });
     return;
@@ -109,6 +118,15 @@ vendorRouter.post("/onboarding/request-otp", async (req, res) => {
 
   if (!parsed.success) {
     res.status(400).json({ error: "Valid phone is required" });
+    return;
+  }
+
+  const existingShop = await services.catalog.getShopByOwnerPhone(parsed.data.ownerPhone);
+
+  if (existingShop) {
+    res.status(409).json({
+      error: "This phone number is already used. Please use a unique phone number or login."
+    });
     return;
   }
 
@@ -237,7 +255,7 @@ vendorRouter.get(
     const shopSummaries = await Promise.all(
       shops.map(async (shop) => {
         const [products, orders] = await Promise.all([
-          services.catalog.listProducts({ shopId: shop.id }),
+          services.catalog.listProducts({ includeOutOfStock: true, shopId: shop.id }),
           services.orders.listOrdersByShop(shop.id)
         ]);
         const completedOrders = orders.filter((order) => order.status === "completed");
@@ -288,7 +306,7 @@ vendorRouter.get("/shops/:shopId/summary", async (req: AppAuthenticatedRequest, 
   const shopId = routeParam(req.params.shopId) || env.DEFAULT_SHOP_ID;
   const [shop, products, orders] = await Promise.all([
     services.catalog.getShop(shopId),
-    services.catalog.listProducts({ shopId }),
+    services.catalog.listProducts({ includeOutOfStock: true, shopId }),
     services.orders.listOrdersByShop(shopId)
   ]);
 

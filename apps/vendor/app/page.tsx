@@ -109,6 +109,54 @@ const emptyOnboarding = {
   shopName: ""
 };
 
+const categoryFallbackImages: Record<string, string> = {
+  Bakery: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&q=70",
+  Dairy: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=500&q=70",
+  Fruits: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=500&q=70",
+  Groceries: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=70",
+  Snacks: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=500&q=70"
+};
+
+function defaultImageForCategory(category: string) {
+  return categoryFallbackImages[category] ?? categoryFallbackImages.Groceries;
+}
+
+async function readApiJson<T>(response: Response): Promise<T & { error?: string }> {
+  try {
+    return (await response.json()) as T & { error?: string };
+  } catch {
+    return {} as T & { error?: string };
+  }
+}
+
+async function compressImageFile(file: File) {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Unable to read selected image"));
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error("Unable to load selected image"));
+    element.src = dataUrl;
+  });
+  const maxSide = 640;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Image compression is not supported in this browser");
+  }
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.62);
+}
+
 export default function VendorHome() {
   const [view, setView] = useState<
     "onboarding" | "login" | "dashboard" | "adminLogin" | "adminDashboard"
@@ -134,6 +182,11 @@ export default function VendorHome() {
   const [activeView, setActiveView] = useState<"orders" | "inventory">("orders");
 
   const shopId = shop?.id;
+  const resetSignupForm = () => {
+    setOnboardingForm(emptyOnboarding);
+    setSignupOtpSent(false);
+    setError("");
+  };
   const activeOrders = useMemo(
     () =>
       summary?.orders.filter((order) =>
@@ -328,9 +381,7 @@ export default function VendorHome() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const data = (await response.json()) as Partial<VendorSession> & {
-        error?: string;
-      };
+      const data = await readApiJson<Partial<VendorSession>>(response);
 
       if (!response.ok || !data.shop || !data.token) {
         throw new Error(data.error ?? "Unable to create vendor shop");
@@ -339,6 +390,8 @@ export default function VendorHome() {
       setShop(data.shop);
       setVendorToken(data.accessToken ?? data.token);
       setVendorRefreshToken(data.refreshToken ?? "");
+      setOnboardingForm(emptyOnboarding);
+      setSignupOtpSent(false);
       setView("dashboard");
     } catch (signupError) {
       setError(signupError instanceof Error ? signupError.message : "Unable to sign up");
@@ -358,7 +411,7 @@ export default function VendorHome() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const data = (await response.json()) as { error?: string; message?: string };
+      const data = await readApiJson<{ message?: string }>(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to send OTP");
@@ -383,7 +436,7 @@ export default function VendorHome() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const data = (await response.json()) as { error?: string; message?: string };
+      const data = await readApiJson<{ message?: string }>(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to send OTP");
@@ -408,7 +461,7 @@ export default function VendorHome() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const data = (await response.json()) as { error?: string; message?: string };
+      const data = await readApiJson<{ message?: string }>(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to send OTP");
@@ -434,9 +487,7 @@ export default function VendorHome() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const data = (await response.json()) as Partial<VendorSession> & {
-        error?: string;
-      };
+      const data = await readApiJson<Partial<VendorSession>>(response);
 
       if (!response.ok || !data.shop || !data.token) {
         throw new Error(data.error ?? "Unable to login");
@@ -464,12 +515,11 @@ export default function VendorHome() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const data = (await response.json()) as {
+      const data = await readApiJson<{
         accessToken?: string;
-        error?: string;
         refreshToken?: string;
         token?: string;
-      };
+      }>(response);
 
       if (!response.ok || !(data.accessToken ?? data.token)) {
         throw new Error(data.error ?? "Unable to login as admin");
@@ -500,7 +550,7 @@ export default function VendorHome() {
       const payload = {
         ...productForm,
         id: productForm.id || undefined,
-        imageUrl: productForm.imageUrl || undefined
+        imageUrl: productForm.imageUrl || defaultImageForCategory(productForm.category)
       };
       const response = await fetchWithPortalAuth(`${apiUrl}/vendor/shops/${shopId}/products`, {
         body: JSON.stringify(payload),
@@ -509,7 +559,7 @@ export default function VendorHome() {
         },
         method: "PUT"
       }, "vendor");
-      const data = (await response.json()) as { error?: string };
+      const data = await readApiJson(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to save product");
@@ -538,6 +588,58 @@ export default function VendorHome() {
       unit: product.unit
     });
     setActiveView("inventory");
+  };
+
+  const handleProductImageUpload = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const imageUrl = await compressImageFile(file);
+      setProductForm((current) => ({ ...current, imageUrl }));
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload image");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleProductStock = async (product: Product) => {
+    if (!shopId) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetchWithPortalAuth(`${apiUrl}/vendor/shops/${shopId}/products`, {
+        body: JSON.stringify({
+          ...product,
+          imageUrl: product.imageUrl || defaultImageForCategory(product.category),
+          inStock: !product.inStock
+        }),
+        headers: {
+          "Content-Type": "application/json"
+        },
+        method: "PUT"
+      }, "vendor");
+      const data = await readApiJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to update stock");
+      }
+
+      await loadSummary(shopId);
+    } catch (stockError) {
+      setError(stockError instanceof Error ? stockError.message : "Unable to update stock");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updateOrderStatus = async (orderId: string, status: string) => {
@@ -662,19 +764,28 @@ export default function VendorHome() {
           <div className="authTabs">
             <button
               className={view === "login" ? "tabButton active" : "tabButton"}
-              onClick={() => setView("login")}
+              onClick={() => {
+                setError("");
+                setView("login");
+              }}
             >
               Login
             </button>
             <button
               className={view === "onboarding" ? "tabButton active" : "tabButton"}
-              onClick={() => setView("onboarding")}
+              onClick={() => {
+                resetSignupForm();
+                setView("onboarding");
+              }}
             >
               Sign up
             </button>
             <button
               className={view === "adminLogin" ? "tabButton active" : "tabButton"}
-              onClick={() => setView("adminLogin")}
+              onClick={() => {
+                setError("");
+                setView("adminLogin");
+              }}
             >
               Admin
             </button>
@@ -800,10 +911,11 @@ export default function VendorHome() {
               )}
             </form>
           ) : (
-            <form className="authForm" key="onboarding" onSubmit={onboardVendor}>
+            <form autoComplete="off" className="authForm" key="onboarding" onSubmit={onboardVendor}>
               <label>
                 Shop name
                 <input
+                  autoComplete="off"
                   required
                   value={onboardingForm.shopName}
                   onChange={(event) =>
@@ -817,6 +929,7 @@ export default function VendorHome() {
               <label>
                 Shop id
                 <input
+                  autoComplete="off"
                   placeholder="fresh-mart"
                   value={onboardingForm.shopId}
                   onChange={(event) =>
@@ -849,6 +962,7 @@ export default function VendorHome() {
               <label>
                 Delivery radius meters
                 <input
+                  autoComplete="off"
                   min={1}
                   type="number"
                   value={onboardingForm.radiusMeters}
@@ -867,6 +981,7 @@ export default function VendorHome() {
               <label>
                 Owner mobile number
                 <input
+                  autoComplete="off"
                   required
                   inputMode="tel"
                   minLength={10}
@@ -895,6 +1010,7 @@ export default function VendorHome() {
                   <label>
                     Enter OTP
                     <input
+                      autoComplete="one-time-code"
                       autoFocus
                       required
                       inputMode="numeric"
@@ -1141,20 +1257,25 @@ export default function VendorHome() {
                   }
                 />
               </label>
-              <label>
-                Image URL
+              <div className="imageUploadBox">
+                <div>
+                  <span className="fieldLabel">Item photo</span>
+                  <p className="helperText">
+                    Upload or capture a photo. If skipped, we will use a category image.
+                  </p>
+                </div>
                 <input
-                  placeholder="https://example.com/apple.png"
-                  type="url"
-                  value={productForm.imageUrl}
-                  onChange={(event) =>
-                    setProductForm((current) => ({
-                      ...current,
-                      imageUrl: event.target.value
-                    }))
-                  }
+                  accept="image/*"
+                  capture="environment"
+                  type="file"
+                  onChange={(event) => void handleProductImageUpload(event.target.files?.[0])}
                 />
-              </label>
+                <img
+                  alt=""
+                  className="imagePreview"
+                  src={productForm.imageUrl || defaultImageForCategory(productForm.category)}
+                />
+              </div>
               <label className="checkboxRow">
                 <input
                   checked={productForm.inStock}
@@ -1166,7 +1287,7 @@ export default function VendorHome() {
                     }))
                   }
                 />
-                Available for customers
+                Show this item to customers
               </label>
               <button className="primaryButton" disabled={isLoading} type="submit">
                 {isLoading ? "Saving..." : "Save item"}
@@ -1180,14 +1301,16 @@ export default function VendorHome() {
               </div>
               <div className="productList">
                 {(summary?.products ?? []).map((product) => (
-                  <button
-                    className="productRow"
-                    key={product.id}
-                    onClick={() => editProduct(product)}
-                  >
+                  <article className="productRow" key={product.id}>
                     {product.imageUrl ? (
                       <img alt="" className="productThumb" src={product.imageUrl} />
-                    ) : null}
+                    ) : (
+                      <img
+                        alt=""
+                        className="productThumb"
+                        src={defaultImageForCategory(product.category)}
+                      />
+                    )}
                     <span>
                       <strong>{product.name}</strong>
                       <small>
@@ -1198,7 +1321,25 @@ export default function VendorHome() {
                       {product.inStock ? "In stock" : "Out"}
                     </span>
                     <span>₹{product.price}</span>
-                  </button>
+                    <span className="productActions">
+                      <button
+                        className="tinyButton"
+                        disabled={isLoading}
+                        onClick={() => void toggleProductStock(product)}
+                        type="button"
+                      >
+                        {product.inStock ? "Hide" : "Show"}
+                      </button>
+                      <button
+                        className="tinyButton"
+                        disabled={isLoading}
+                        onClick={() => editProduct(product)}
+                        type="button"
+                      >
+                        Edit
+                      </button>
+                    </span>
+                  </article>
                 ))}
               </div>
             </section>

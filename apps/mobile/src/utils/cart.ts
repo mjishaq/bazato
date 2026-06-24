@@ -27,7 +27,7 @@ export function getCartSummary(
     (sum, line) => sum + line.product.mrp * line.quantity,
     0
   );
-  const deliveryFee = itemCount > 0 ? 20 : 0;
+  const deliveryFee = 0;
 
   return {
     lines,

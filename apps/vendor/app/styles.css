@@ -539,6 +539,40 @@ select:focus {
   gap: 12px;
 }
 
+.fieldLabel {
+  color: var(--ink-soft);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.helperText {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.imageUploadBox {
+  display: grid;
+  gap: 10px;
+}
+
+.imageUploadBox input[type="file"] {
+  height: auto;
+  padding: 12px;
+}
+
+.imagePreview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-alt);
+  object-fit: cover;
+}
+
 .checkboxRow {
   display: flex;
   align-items: center;
@@ -554,7 +588,7 @@ select:focus {
 .productRow {
   width: 100%;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 90px 70px;
+  grid-template-columns: auto minmax(0, 1fr) 90px 70px 118px;
   gap: 14px;
   align-items: center;
   border: 1px solid var(--line);
@@ -565,6 +599,12 @@ select:focus {
   text-align: left;
   transition: border-color 0.15s ease, box-shadow 0.15s ease,
     transform 0.12s ease;
+}
+
+.productActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .productRow:hover {

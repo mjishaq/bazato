@@ -3,6 +3,7 @@ import type { Product, Shop } from "../domain/models.js";
 
 export type ProductFilters = {
   category?: string;
+  includeOutOfStock?: boolean;
   query?: string;
   shopId?: string;
 };
@@ -84,8 +85,9 @@ export class MemoryCatalogRepository implements CatalogRepository {
       const matchesOpenShop = shop?.isOpen ?? false;
       const matchesCategory = category === "All" || product.category === category;
       const matchesQuery = product.name.toLowerCase().includes(query);
+      const matchesStock = filters.includeOutOfStock || product.inStock;
 
-      return matchesShop && matchesOpenShop && matchesCategory && matchesQuery;
+      return matchesShop && matchesOpenShop && matchesCategory && matchesQuery && matchesStock;
     });
   }
 
@@ -94,7 +96,7 @@ export class MemoryCatalogRepository implements CatalogRepository {
     return products.filter((product) => {
       const shop = shops.find((item) => item.id === product.storeId);
 
-      return productIdSet.has(product.id) && Boolean(shop?.isOpen);
+      return productIdSet.has(product.id) && Boolean(shop?.isOpen) && product.inStock;
     });
   }
 
