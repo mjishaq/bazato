@@ -22,9 +22,6 @@ const envSchema = z.object({
     z.string().optional()
   ),
   JWT_SECRET: z.string().default("development-only-secret"),
-  KEYCLOAK_ISSUER: z.string().url().optional(),
-  KEYCLOAK_JWKS_URL: z.string().url().optional(),
-  KEYCLOAK_AUDIENCE: z.string().optional(),
   CORS_ORIGIN: z.string().optional(),
   OTP_PROVIDER: z.enum(["mock", "sms"]).default("mock"),
   SMS_PROVIDER: z.enum(["console", "http"]).default("console"),

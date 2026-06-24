@@ -18,7 +18,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
     }
 
     return {
-      id: user.keycloakSubject,
+      id: user.authSubject,
       address: user.address ?? "",
       email: user.email ?? "",
       name: user.name ?? "",
@@ -40,7 +40,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
       create: {
         address: input.address,
         email: input.email,
-        keycloakSubject: `customer-${input.phone}`,
+        authSubject: `customer-${input.phone}`,
         name: input.name,
         phone: input.phone,
         preference: input.preference,
@@ -49,7 +49,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
     });
 
     return {
-      id: user.keycloakSubject,
+      id: user.authSubject,
       address: user.address ?? input.address,
       email: user.email ?? input.email,
       name: user.name ?? input.name,

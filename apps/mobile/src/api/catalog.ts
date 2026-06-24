@@ -1,5 +1,4 @@
 import type { Product, Store } from "../data/catalog";
-import { env } from "../config/env";
 import { apiRequest } from "./client";
 
 type ApiShop = {
@@ -38,7 +37,7 @@ export async function getNearbyShops(location?: {
   }));
 }
 
-export async function getShopProducts(shopId = env.defaultShopId) {
+export async function getShopProducts(shopId: string) {
   const data = await apiRequest<{ products: ApiProduct[] }>(
     `/catalog/shops/${shopId}/products`
   );

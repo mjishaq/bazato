@@ -244,7 +244,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
           connectOrCreate: {
             where: { phone: input.ownerPhone },
             create: {
-              keycloakSubject: `vendor-${input.ownerPhone}`,
+              authSubject: `vendor-${input.ownerPhone}`,
               phone: input.ownerPhone,
               role: "VENDOR"
             }
@@ -262,7 +262,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
           connectOrCreate: {
             where: { phone: input.ownerPhone },
             create: {
-              keycloakSubject: `vendor-${input.ownerPhone}`,
+              authSubject: `vendor-${input.ownerPhone}`,
               phone: input.ownerPhone,
               role: "VENDOR"
             }

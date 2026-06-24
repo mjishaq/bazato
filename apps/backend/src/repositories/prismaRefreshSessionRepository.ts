@@ -25,13 +25,13 @@ export class PrismaRefreshSessionRepository implements RefreshSessionRepository 
       }
     });
     const user = await prisma.user.upsert({
-      where: { keycloakSubject: input.userId },
+      where: { authSubject: input.userId },
       update: {
         phone: input.phone,
         role: roleToPrisma[input.role]
       },
       create: {
-        keycloakSubject: input.userId,
+        authSubject: input.userId,
         phone: input.phone,
         role: roleToPrisma[input.role]
       }
@@ -87,7 +87,7 @@ export class PrismaRefreshSessionRepository implements RefreshSessionRepository 
       role: roleFromPrisma[session.role],
       shopId: session.shopId ?? undefined,
       tokenHash: session.tokenHash,
-      userId: session.user.keycloakSubject
+      userId: session.user.authSubject
     };
   }
 

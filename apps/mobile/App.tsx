@@ -16,7 +16,6 @@ import { fontAssets } from "./src/theme/typography";
 
 import { getNearbyShops, getShopProducts } from "./src/api/catalog";
 import { createCodOrder, getOrder, getOrders } from "./src/api/orders";
-import { env } from "./src/config/env";
 import {
   products as fallbackProducts,
   type Product,
@@ -264,7 +263,16 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
-    const shopId = selectedShop?.id ?? env.defaultShopId;
+
+    if (!selectedShop) {
+      setCatalogProducts([]);
+      setCart({});
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const shopId = selectedShop.id;
 
     getShopProducts(shopId)
       .then((nextProducts) => {
@@ -405,10 +413,14 @@ export default function App() {
   };
 
   const placeOrder = async (navigate: (screen: AppScreen) => void) => {
+    if (!selectedShop) {
+      throw new Error("Please select a nearby shop before placing an order.");
+    }
+
     const nextOrder = await createCodOrder({
       lines: cartSummary.lines,
       phone: session?.phone ?? customerProfile?.phone ?? "9876543210",
-      shopId: selectedShop?.id ?? env.defaultShopId,
+      shopId: selectedShop.id,
       deliveryAddress: selectedAddress?.line ?? deliveryAddress,
       deliveryLatitude: selectedAddress?.latitude ?? deliveryLocation?.latitude,
       deliveryLongitude: selectedAddress?.longitude ?? deliveryLocation?.longitude,

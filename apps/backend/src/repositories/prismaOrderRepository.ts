@@ -34,7 +34,7 @@ function mapOrder(order: OrderRow | null): Order | null {
   return {
     id: order.orderNumber,
     phone: order.user.phone,
-    userId: order.user.keycloakSubject,
+    userId: order.user.authSubject,
     shopId: order.shopId,
     shopName: order.shop.name,
     items: order.items.map((item) => ({
@@ -70,7 +70,7 @@ export class PrismaOrderRepository implements OrderRepository {
     const userBySubject = userByPhone
       ? null
       : await prisma.user.findUnique({
-          where: { keycloakSubject: order.userId }
+          where: { authSubject: order.userId }
         });
     const orderUser = userByPhone
       ? userByPhone
@@ -84,7 +84,7 @@ export class PrismaOrderRepository implements OrderRepository {
           })
         : await prisma.user.create({
             data: {
-              keycloakSubject: order.userId,
+              authSubject: order.userId,
               phone: order.phone,
               role: "CUSTOMER"
             }
@@ -142,7 +142,7 @@ export class PrismaOrderRepository implements OrderRepository {
     const orders = await prisma.order.findMany({
       where: {
         user: {
-          keycloakSubject: userId
+          authSubject: userId
         }
       },
       orderBy: { createdAt: "desc" },

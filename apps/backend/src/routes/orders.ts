@@ -3,11 +3,14 @@ import { z } from "zod";
 
 import { services } from "../container.js";
 import type { OrderStatus } from "../domain/models.js";
-import { requireAuth, type AuthenticatedRequest } from "../security/keycloak.js";
+import {
+  requireCustomerAuth,
+  type CustomerAuthenticatedRequest
+} from "../security/customerAuth.js";
 
 export const ordersRouter = Router();
 
-ordersRouter.use(requireAuth);
+ordersRouter.use(requireCustomerAuth);
 
 const createOrderSchema = z.object({
   phone: z.string().min(10),
@@ -36,7 +39,7 @@ function routeParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-ordersRouter.post("/", async (req: AuthenticatedRequest, res) => {
+ordersRouter.post("/", async (req: CustomerAuthenticatedRequest, res) => {
   const parsed = createOrderSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -58,7 +61,7 @@ ordersRouter.post("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-ordersRouter.get("/", async (req: AuthenticatedRequest, res) => {
+ordersRouter.get("/", async (req: CustomerAuthenticatedRequest, res) => {
   const orders = await services.orders.listOrdersByUser(
     req.auth?.sub ?? "development-user"
   );
@@ -66,7 +69,7 @@ ordersRouter.get("/", async (req: AuthenticatedRequest, res) => {
   res.json({ orders });
 });
 
-ordersRouter.get("/:orderId", async (req: AuthenticatedRequest, res) => {
+ordersRouter.get("/:orderId", async (req: CustomerAuthenticatedRequest, res) => {
   const orderId = routeParam(req.params.orderId);
 
   if (!orderId) {
@@ -89,7 +92,7 @@ ordersRouter.get("/:orderId", async (req: AuthenticatedRequest, res) => {
   res.json({ order });
 });
 
-ordersRouter.patch("/:orderId/status", async (req: AuthenticatedRequest, res) => {
+ordersRouter.patch("/:orderId/status", async (req: CustomerAuthenticatedRequest, res) => {
   const parsed = statusSchema.safeParse(req.body);
 
   if (!parsed.success) {

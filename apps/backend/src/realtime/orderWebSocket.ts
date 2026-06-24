@@ -2,8 +2,8 @@ import type { Server } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import { services } from "../container.js";
+import { authenticateToken } from "../security/customerAuth.js";
 import { orderEvents } from "./orderEvents.js";
-import { authenticateToken } from "../security/keycloak.js";
 
 type Client = {
   orderId: string;

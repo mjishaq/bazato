@@ -29,7 +29,7 @@ enum PaymentMethod {
 
 model User {
   id                String   @id @default(cuid())
-  keycloakSubject   String   @unique
+  authSubject       String   @unique
   phone             String   @unique
   name              String?
   email             String?
