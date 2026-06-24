@@ -20,6 +20,7 @@
     "dev:vendor": "npm --workspace apps/vendor run dev",
     "setup:infra": "powershell -ExecutionPolicy Bypass -File scripts/setup-infra.ps1",
     "smoke:holistic": "node scripts/smoke-holistic.mjs",
+    "load:100": "node scripts/load-100-users.mjs",
     "lint": "npm --workspaces --if-present run lint",
     "typecheck": "npm --workspaces --if-present run typecheck",
     "test": "npm --workspaces --if-present run test"

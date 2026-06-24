@@ -33,6 +33,9 @@ const envSchema = z.object({
     z.string().url().optional()
   ),
   MOCK_OTP_CODE: z.string().regex(/^\d{4,8}$/).default("1234"),
+  GLOBAL_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(3000),
+  AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(60),
+  CATALOG_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(5000),
   ORDER_ID_PREFIX: z.string().min(1).default("BZ"),
   DEFAULT_SHOP_ID: z.string().min(1).default("fresh-mart"),
   DEFAULT_DELIVERY_FEE: z.coerce.number().int().nonnegative().default(20),

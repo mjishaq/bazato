@@ -24,6 +24,7 @@ export type ShopFilters = {
   latitude?: number;
   longitude?: number;
   limit: number;
+  radiusMeters?: number;
 };
 
 export type ShopInput = {

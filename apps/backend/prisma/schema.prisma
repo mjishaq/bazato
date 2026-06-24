@@ -41,6 +41,8 @@ model User {
   orders            Order[]
   ownedShops        Shop[]   @relation("ShopOwner")
   refreshSessions   RefreshSession[]
+
+  @@index([role])
 }
 
 model RefreshSession {
@@ -52,6 +54,9 @@ model RefreshSession {
   shopId      String?
   expiresAt   DateTime
   createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model AuditLog {
@@ -81,6 +86,9 @@ model Shop {
   updatedAt      DateTime  @updatedAt
   products       Product[]
   orders         Order[]
+
+  @@index([isOpen, latitude, longitude])
+  @@index([ownerId])
 }
 
 model Product {
@@ -97,6 +105,9 @@ model Product {
   inStock   Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([shopId, category])
+  @@index([shopId, inStock])
 }
 
 model Order {
@@ -119,6 +130,10 @@ model Order {
   updatedAt     DateTime        @updatedAt
   items         OrderItem[]
   timeline      OrderTimeline[]
+
+  @@index([userId, createdAt])
+  @@index([shopId, createdAt])
+  @@index([shopId, status])
 }
 
 model OrderItem {
@@ -129,6 +144,9 @@ model OrderItem {
   name      String
   quantity  Int
   unitPrice Int
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 model OrderTimeline {
@@ -137,4 +155,6 @@ model OrderTimeline {
   order     Order       @relation(fields: [orderId], references: [id])
   status    OrderStatus
   createdAt DateTime    @default(now())
+
+  @@index([orderId, createdAt])
 }

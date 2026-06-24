@@ -37,8 +37,8 @@ const statusSchema = z.object({
 
 const onboardingSchema = z.object({
   category: z.string().min(1),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
   ownerPhone: z.string().min(10),
   otp: z.string().length(4),
   radiusMeters: z.number().int().positive().max(5000).optional(),

@@ -263,34 +263,40 @@ export default function VendorHome() {
     }
   };
 
-  const useVendorCurrentLocation = () => {
-    setError("");
-
-    if (!navigator.geolocation) {
-      setError("Browser location is not available. Enter coordinates manually.");
-      return;
+  const captureVendorLocation = async () => {
+    if (onboardingForm.latitude && onboardingForm.longitude) {
+      return {
+        latitude: Number(onboardingForm.latitude),
+        longitude: Number(onboardingForm.longitude)
+      };
     }
 
-    setIsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setOnboardingForm((current) => ({
-          ...current,
-          latitude: position.coords.latitude.toFixed(7),
-          longitude: position.coords.longitude.toFixed(7)
-        }));
-        setIsLoading(false);
-      },
-      () => {
-        setError("Unable to read location. Allow browser location or enter coordinates.");
-        setIsLoading(false);
-      },
-      {
+    if (!navigator.geolocation) {
+      throw new Error("Location is required. Please turn on browser location access.");
+    }
+
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
         enableHighAccuracy: true,
         maximumAge: 30000,
         timeout: 10000
-      }
-    );
+      });
+    }).catch(() => {
+      throw new Error("Location is required. Please turn on location permission and try again.");
+    });
+    const latitude = position.coords.latitude.toFixed(7);
+    const longitude = position.coords.longitude.toFixed(7);
+
+    setOnboardingForm((current) => ({
+      ...current,
+      latitude,
+      longitude
+    }));
+
+    return {
+      latitude: Number(latitude),
+      longitude: Number(longitude)
+    };
   };
 
   useEffect(() => {
@@ -311,13 +317,12 @@ export default function VendorHome() {
     setError("");
 
     try {
-      const latitude = Number(onboardingForm.latitude);
-      const longitude = Number(onboardingForm.longitude);
+      const location = await captureVendorLocation();
       const response = await fetch(`${apiUrl}/vendor/onboarding`, {
         body: JSON.stringify({
           ...onboardingForm,
-          latitude: Number.isFinite(latitude) ? latitude : undefined,
-          longitude: Number.isFinite(longitude) ? longitude : undefined,
+          latitude: location.latitude,
+          longitude: location.longitude,
           radiusMeters: onboardingForm.radiusMeters
         }),
         headers: { "Content-Type": "application/json" },
@@ -347,6 +352,7 @@ export default function VendorHome() {
     setError("");
 
     try {
+      await captureVendorLocation();
       const response = await fetch(`${apiUrl}/vendor/onboarding/request-otp`, {
         body: JSON.stringify({ ownerPhone: onboardingForm.ownerPhone }),
         headers: { "Content-Type": "application/json" },
@@ -840,60 +846,24 @@ export default function VendorHome() {
                   <option>Snacks</option>
                 </select>
               </label>
-              <div className="formRow">
-                <label>
-                  Latitude
-                  <input
-                    inputMode="decimal"
-                    placeholder="24.7135517"
-                    value={onboardingForm.latitude}
-                    onChange={(event) =>
-                      setOnboardingForm((current) => ({
-                        ...current,
-                        latitude: event.target.value
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  Longitude
-                  <input
-                    inputMode="decimal"
-                    placeholder="46.6752957"
-                    value={onboardingForm.longitude}
-                    onChange={(event) =>
-                      setOnboardingForm((current) => ({
-                        ...current,
-                        longitude: event.target.value
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-              <div className="formRow">
-                <label>
-                  Delivery radius meters
-                  <input
-                    min={1}
-                    type="number"
-                    value={onboardingForm.radiusMeters}
-                    onChange={(event) =>
-                      setOnboardingForm((current) => ({
-                        ...current,
-                        radiusMeters: Number(event.target.value)
-                      }))
-                    }
-                  />
-                </label>
-                <button
-                  className="secondaryButton"
-                  disabled={isLoading}
-                  onClick={useVendorCurrentLocation}
-                  type="button"
-                >
-                  Use current location
-                </button>
-              </div>
+              <label>
+                Delivery radius meters
+                <input
+                  min={1}
+                  type="number"
+                  value={onboardingForm.radiusMeters}
+                  onChange={(event) =>
+                    setOnboardingForm((current) => ({
+                      ...current,
+                      radiusMeters: Number(event.target.value)
+                    }))
+                  }
+                />
+              </label>
+              <p className="summary">
+                Shop location will be captured when you send OTP. Keep browser location
+                permission on to register your shop.
+              </p>
               <label>
                 Owner mobile number
                 <input

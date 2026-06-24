@@ -29,6 +29,29 @@ function distanceMetersBetween(
   return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function coordinateWindow({
+  latitude,
+  longitude,
+  radiusMeters
+}: {
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+}) {
+  const metersPerLatitudeDegree = 111320;
+  const latitudeDelta = radiusMeters / metersPerLatitudeDegree;
+  const longitudeDelta =
+    radiusMeters /
+    (metersPerLatitudeDegree * Math.max(Math.cos((latitude * Math.PI) / 180), 0.01));
+
+  return {
+    latitudeMax: latitude + latitudeDelta,
+    latitudeMin: latitude - latitudeDelta,
+    longitudeMax: longitude + longitudeDelta,
+    longitudeMin: longitude - longitudeDelta
+  };
+}
+
 function mapShop(shop: PrismaShop | null, distanceMeters?: number): Shop | null {
   if (!shop) {
     return null;
@@ -70,8 +93,30 @@ export class PrismaCatalogRepository implements CatalogRepository {
   async listShops(filters: ShopFilters) {
     const hasCustomerLocation =
       typeof filters.latitude === "number" && typeof filters.longitude === "number";
+    const maxRadiusMeters = filters.radiusMeters ?? 100;
+    const bounds = hasCustomerLocation
+      ? coordinateWindow({
+          latitude: filters.latitude as number,
+          longitude: filters.longitude as number,
+          radiusMeters: maxRadiusMeters
+        })
+      : null;
     const rows = await prisma.shop.findMany({
-      where: { isOpen: true },
+      where: {
+        isOpen: true,
+        latitude: bounds
+          ? {
+              gte: bounds.latitudeMin,
+              lte: bounds.latitudeMax
+            }
+          : undefined,
+        longitude: bounds
+          ? {
+              gte: bounds.longitudeMin,
+              lte: bounds.longitudeMax
+            }
+          : undefined
+      },
       orderBy: [{ isOpen: "desc" }, { rating: "desc" }],
       take: hasCustomerLocation ? undefined : filters.limit
     });

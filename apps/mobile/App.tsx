@@ -19,7 +19,6 @@ import { createCodOrder, getOrder, getOrders } from "./src/api/orders";
 import { env } from "./src/config/env";
 import {
   products as fallbackProducts,
-  stores as fallbackStores,
   type Product,
   type Store
 } from "./src/data/catalog";
@@ -77,6 +76,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const onboardingStorageKey = "bazzato.customer.onboarding";
 const addressesStorageKey = "bazzato.customer.addresses";
 const tokenRefreshSkewMs = 60 * 1000;
+const shopRefreshIntervalMs = 30 * 1000;
 
 const PHONE_WIDTH = 412;
 const PHONE_MAX_HEIGHT = 896;
@@ -149,8 +149,8 @@ export default function App() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [catalogProducts, setCatalogProducts] =
     useState<Product[]>(fallbackProducts);
-  const [shops, setShops] = useState<Store[]>(fallbackStores);
-  const [selectedShop, setSelectedShop] = useState<Store | null>(fallbackStores[0]);
+  const [shops, setShops] = useState<Store[]>([]);
+  const [selectedShop, setSelectedShop] = useState<Store | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState(
     "Demo area, near current location"
   );
@@ -188,13 +188,23 @@ export default function App() {
     addresses.find((address) => address.id === selectedAddressId) ?? addresses[0];
 
   const loadShops = async () => {
+    if (!deliveryLocation) {
+      setShops([]);
+      setSelectedShop(null);
+      return;
+    }
+
     try {
-      const nextShops = await getNearbyShops(deliveryLocation ?? undefined);
+      const nextShops = await getNearbyShops(deliveryLocation);
       setShops(nextShops);
-      setSelectedShop((current) => current ?? nextShops[0] ?? null);
+      setSelectedShop((current) =>
+        current && nextShops.some((shop) => shop.id === current.id)
+          ? current
+          : nextShops[0] ?? null
+      );
     } catch {
-      setShops(fallbackStores);
-      setSelectedShop((current) => current ?? fallbackStores[0] ?? null);
+      setShops([]);
+      setSelectedShop(null);
     }
   };
 
@@ -247,7 +257,7 @@ export default function App() {
     void loadShops();
     const timer = setInterval(() => {
       void loadShops();
-    }, 5000);
+    }, shopRefreshIntervalMs);
 
     return () => clearInterval(timer);
   }, [deliveryLocation?.latitude, deliveryLocation?.longitude]);

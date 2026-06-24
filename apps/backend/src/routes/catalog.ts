@@ -8,12 +8,18 @@ catalogRouter.get("/shops", async (req, res) => {
   const limit = Number(req.query.limit ?? 20);
   const latitude = Number(req.query.latitude);
   const longitude = Number(req.query.longitude);
+  const hasLocation = Number.isFinite(latitude) && Number.isFinite(longitude);
+
+  if (!hasLocation) {
+    res.json({ shops: [] });
+    return;
+  }
 
   res.json({
     shops: await services.catalog.listShops({
-      latitude: Number.isFinite(latitude) ? latitude : undefined,
+      latitude,
       limit,
-      longitude: Number.isFinite(longitude) ? longitude : undefined
+      longitude
     })
   });
 });
