@@ -29,6 +29,15 @@ authRouter.post("/register", async (req, res) => {
     return;
   }
 
+  const existingCustomer = await services.auth.getCustomerByPhone(parsed.data.phone);
+
+  if (existingCustomer) {
+    res.status(409).json({
+      error: "This phone number is already registered. Please login instead."
+    });
+    return;
+  }
+
   if (!(await services.auth.verifyOtpForPhone(parsed.data.phone, parsed.data.otp))) {
     res.status(401).json({ error: "Invalid OTP" });
     return;
@@ -50,6 +59,15 @@ authRouter.post("/register/request-otp", async (req, res) => {
 
   if (!parsed.success) {
     res.status(400).json({ error: "Valid phone is required" });
+    return;
+  }
+
+  const existingCustomer = await services.auth.getCustomerByPhone(parsed.data.phone);
+
+  if (existingCustomer) {
+    res.status(409).json({
+      error: "This phone number is already registered. Please login instead."
+    });
     return;
   }
 

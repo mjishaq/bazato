@@ -12,6 +12,28 @@ import {
 
 export const vendorRouter = Router();
 
+const productUnits = [
+  "1 kg",
+  "500 g",
+  "400 g",
+  "400 g cup",
+  "400 g loaf",
+  "250 g",
+  "100 g",
+  "90 g",
+  "1 liter",
+  "500 ml",
+  "500 ml pouch",
+  "250 ml",
+  "1 piece",
+  "6 pieces",
+  "12 pieces",
+  "1 pack",
+  "Family pack",
+  "1 box",
+  "1 dozen"
+] as const;
+
 const productSchema = z.object({
   id: z.string().min(1).optional().or(z.literal("")),
   category: z.string().min(1),
@@ -21,7 +43,7 @@ const productSchema = z.object({
   name: z.string().min(1),
   price: z.number().int().nonnegative(),
   tag: z.string().optional(),
-  unit: z.string().min(1)
+  unit: z.enum(productUnits)
 });
 
 const statusSchema = z.object({

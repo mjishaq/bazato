@@ -525,7 +525,10 @@ export default function App() {
                 onComplete={async (nextSession) => {
                   setSession(nextSession);
                   await saveStoredSession(nextSession);
-                  navigation.replace("location");
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: "location" }]
+                  });
                 }}
                 onRegister={() => navigation.replace("onboarding")}
               />
@@ -537,7 +540,10 @@ export default function App() {
                 onBack={() => navigation.replace(session ? "home" : "login")}
                 onContinue={(location) => {
                   setDeliveryLocation(location ?? null);
-                  navigation.replace("home");
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: "home" }]
+                  });
                 }}
               />
             )}
@@ -546,7 +552,7 @@ export default function App() {
             {({ navigation }) => (
               <HomeScreen
                 cartSummary={cartSummary}
-                onBack={() => undefined}
+                onBack={() => navigation.navigate("location")}
                 onCart={() => navigation.navigate("cart")}
                 onOpenStore={(shop) => openShop(shop, navigation.navigate)}
                 onOrders={() => navigation.navigate("orders")}

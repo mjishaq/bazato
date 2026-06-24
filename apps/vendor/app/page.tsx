@@ -85,6 +85,27 @@ type VendorSession = {
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const orderStatuses = ["accepted", "preparing", "ready", "completed", "rejected"];
+const productUnits = [
+  "1 kg",
+  "500 g",
+  "400 g",
+  "400 g cup",
+  "400 g loaf",
+  "250 g",
+  "100 g",
+  "90 g",
+  "1 liter",
+  "500 ml",
+  "500 ml pouch",
+  "250 ml",
+  "1 piece",
+  "6 pieces",
+  "12 pieces",
+  "1 pack",
+  "Family pack",
+  "1 box",
+  "1 dozen"
+];
 
 const emptyProduct = {
   category: "Fruits",
@@ -95,7 +116,7 @@ const emptyProduct = {
   name: "",
   price: 0,
   tag: "",
-  unit: ""
+  unit: productUnits[0]
 };
 
 const emptyOnboarding = {
@@ -1200,9 +1221,8 @@ export default function VendorHome() {
               </label>
               <label>
                 Unit
-                <input
+                <select
                   required
-                  placeholder="1 kg, 6 pieces, 500 ml"
                   value={productForm.unit}
                   onChange={(event) =>
                     setProductForm((current) => ({
@@ -1210,7 +1230,11 @@ export default function VendorHome() {
                       unit: event.target.value
                     }))
                   }
-                />
+                >
+                  {productUnits.map((unit) => (
+                    <option key={unit}>{unit}</option>
+                  ))}
+                </select>
               </label>
               <div className="formRow">
                 <label>

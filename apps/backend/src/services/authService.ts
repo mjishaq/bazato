@@ -17,6 +17,10 @@ export class AuthService {
     return this.customerRepository.upsertCustomer(input);
   }
 
+  getCustomerByPhone(phone: string) {
+    return this.customerRepository.getCustomerByPhone(phone);
+  }
+
   async requestOtp(phone: string) {
     const customer = await this.customerRepository.getCustomerByPhone(phone);
 
