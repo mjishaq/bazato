@@ -2,7 +2,7 @@ import WebSocket from "ws";
 
 const api = process.env.BAZZATO_API_URL ?? "http://localhost:4000";
 const customerPhone = "9876543210";
-const adminPhone = process.env.BAZZATO_ADMIN_PHONE ?? "966500000000";
+const adminPhone = process.env.BAZZATO_ADMIN_PHONE ?? "1234567890";
 const vendorPhone = process.env.BAZZATO_VENDOR_PHONE ?? "966511112222";
 const H = { "Content-Type": "application/json" };
 const log = (step, data) => console.log(`\n[${step}]`, JSON.stringify(data, null, 2));
@@ -101,7 +101,14 @@ async function main() {
   // --- Customer places order ---
   const created = await req(`${api}/orders`, {
     method: "POST", headers: { ...H, Authorization: `Bearer ${customerToken}` },
-    body: JSON.stringify({ phone: customerPhone, shopId: vendorLogin.shop.id, deliveryAddress: "12 Mock Street", items: [{ productId: product.id, quantity: 2 }] })
+    body: JSON.stringify({
+      phone: customerPhone,
+      shopId: vendorLogin.shop.id,
+      deliveryAddress: "12 Mock Street",
+      deliveryLatitude: 24.6723896,
+      deliveryLongitude: 46.7128945,
+      items: [{ productId: product.id, quantity: 2 }]
+    })
   });
   log("8. create order", { id: created.order.id, orderNumber: created.order.orderNumber, total: created.order.total, status: created.order.status });
 

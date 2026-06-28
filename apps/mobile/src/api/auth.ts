@@ -73,3 +73,22 @@ export async function logoutAuthSession(refreshToken: string) {
     body: { refreshToken }
   });
 }
+
+export async function updateCustomerLocation({
+  latitude,
+  longitude,
+  token
+}: {
+  latitude: number;
+  longitude: number;
+  token: string;
+}) {
+  return apiRequest<{ customer: CustomerRegistration & { id: string } }>(
+    "/auth/location",
+    {
+      method: "PATCH",
+      token,
+      body: { latitude, longitude }
+    }
+  );
+}

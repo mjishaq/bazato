@@ -108,6 +108,12 @@ class LazyPrismaCustomerRepository implements CustomerRepository {
     return (await this.getRepository()).getCustomerByPhone(...args);
   }
 
+  async updateCustomerLocation(
+    ...args: Parameters<CustomerRepository["updateCustomerLocation"]>
+  ) {
+    return (await this.getRepository()).updateCustomerLocation(...args);
+  }
+
   async upsertCustomer(...args: Parameters<CustomerRepository["upsertCustomer"]>) {
     return (await this.getRepository()).upsertCustomer(...args);
   }

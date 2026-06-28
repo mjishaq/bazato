@@ -21,6 +21,13 @@ export class AuthService {
     return this.customerRepository.getCustomerByPhone(phone);
   }
 
+  updateCustomerLocation(
+    userId: string,
+    location: { latitude: number; longitude: number }
+  ) {
+    return this.customerRepository.updateCustomerLocation(userId, location);
+  }
+
   async requestOtp(phone: string) {
     const customer = await this.customerRepository.getCustomerByPhone(phone);
 

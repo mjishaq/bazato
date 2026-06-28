@@ -34,6 +34,8 @@ model User {
   name              String?
   email             String?
   address           String?
+  latitude          Decimal?  @db.Decimal(10, 7)
+  longitude         Decimal?  @db.Decimal(10, 7)
   preference        String?
   role              UserRole @default(CUSTOMER)
   createdAt         DateTime @default(now())

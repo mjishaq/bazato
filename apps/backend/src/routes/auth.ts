@@ -2,6 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 
 import { services } from "../container.js";
+import {
+  requireCustomerAuth,
+  type CustomerAuthenticatedRequest
+} from "../security/customerAuth.js";
 
 export const authRouter = Router();
 
@@ -19,6 +23,11 @@ const customerRegistrationSchema = phoneSchema.extend({
 
 const refreshSchema = z.object({
   refreshToken: z.string().min(32)
+});
+
+const locationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180)
 });
 
 authRouter.post("/register", async (req, res) => {
@@ -130,6 +139,31 @@ authRouter.post("/refresh", async (req, res) => {
 
   res.json(tokens);
 });
+
+authRouter.patch(
+  "/location",
+  requireCustomerAuth,
+  async (req: CustomerAuthenticatedRequest, res) => {
+    const parsed = locationSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({ error: "Valid customer coordinates are required" });
+      return;
+    }
+
+    const customer = await services.auth.updateCustomerLocation(
+      req.auth?.sub ?? "",
+      parsed.data
+    );
+
+    if (!customer) {
+      res.status(404).json({ error: "Customer profile not found" });
+      return;
+    }
+
+    res.json({ customer });
+  }
+);
 
 authRouter.post("/logout", async (req, res) => {
   const parsed = refreshSchema.safeParse(req.body);

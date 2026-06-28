@@ -21,6 +21,8 @@ export class PrismaCustomerRepository implements CustomerRepository {
       id: user.authSubject,
       address: user.address ?? "",
       email: user.email ?? "",
+      latitude: user.latitude !== null ? Number(user.latitude) : undefined,
+      longitude: user.longitude !== null ? Number(user.longitude) : undefined,
       name: user.name ?? "",
       phone: user.phone,
       preference: user.preference ?? ""
@@ -52,9 +54,48 @@ export class PrismaCustomerRepository implements CustomerRepository {
       id: user.authSubject,
       address: user.address ?? input.address,
       email: user.email ?? input.email,
+      latitude: user.latitude !== null ? Number(user.latitude) : undefined,
+      longitude: user.longitude !== null ? Number(user.longitude) : undefined,
       name: user.name ?? input.name,
       phone: user.phone,
       preference: user.preference ?? input.preference
+    };
+  }
+
+  async updateCustomerLocation(
+    userId: string,
+    location: { latitude: number; longitude: number }
+  ) {
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        authSubject: userId,
+        role: "CUSTOMER"
+      }
+    });
+
+    if (!existingUser) {
+      return null;
+    }
+
+    const user = await prisma.user.update({
+      data: {
+        latitude: location.latitude,
+        longitude: location.longitude
+      },
+      where: {
+        id: existingUser.id
+      }
+    });
+
+    return {
+      id: user.authSubject,
+      address: user.address ?? "",
+      email: user.email ?? "",
+      latitude: user.latitude !== null ? Number(user.latitude) : undefined,
+      longitude: user.longitude !== null ? Number(user.longitude) : undefined,
+      name: user.name ?? "",
+      phone: user.phone,
+      preference: user.preference ?? ""
     };
   }
 }

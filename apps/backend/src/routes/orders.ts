@@ -23,9 +23,9 @@ const createOrderSchema = z.object({
       })
     )
     .min(1),
-  deliveryAddress: z.string().optional(),
-  deliveryLatitude: z.number().min(-90).max(90).optional(),
-  deliveryLongitude: z.number().min(-180).max(180).optional(),
+  deliveryAddress: z.string().min(1),
+  deliveryLatitude: z.number().min(-90).max(90),
+  deliveryLongitude: z.number().min(-180).max(180),
   note: z.string().optional()
 });
 

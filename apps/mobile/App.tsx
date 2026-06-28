@@ -5,11 +5,13 @@ import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  Alert,
   Platform,
   StyleSheet,
   View,
   useWindowDimensions
 } from "react-native";
+import * as Location from "expo-location";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { fontAssets } from "./src/theme/typography";
@@ -35,7 +37,8 @@ import {
   logoutAuthSession,
   refreshAuthSession,
   registerCustomer,
-  requestRegistrationOtp
+  requestRegistrationOtp,
+  updateCustomerLocation
 } from "./src/api/auth";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LocationPermissionScreen } from "./src/screens/LocationPermissionScreen";
@@ -215,8 +218,11 @@ export default function App() {
     ])
       .then(([value, storedAddresses, storedSession]) => {
         if (!value) {
-          if (storedSession && new Date(storedSession.refreshTokenExpiresAt).getTime() > Date.now()) {
-            setSession(storedSession);
+          if (
+            storedSession &&
+            new Date(storedSession.refreshTokenExpiresAt).getTime() <= Date.now()
+          ) {
+            void clearStoredSession();
           }
           return;
         }
@@ -244,8 +250,11 @@ export default function App() {
           }
         }
 
-        if (storedSession && new Date(storedSession.refreshTokenExpiresAt).getTime() > Date.now()) {
-          setSession(storedSession);
+        if (
+          storedSession &&
+          new Date(storedSession.refreshTokenExpiresAt).getTime() <= Date.now()
+        ) {
+          void clearStoredSession();
         }
       })
       .catch(() => undefined)
@@ -479,6 +488,54 @@ export default function App() {
     navigate("login");
   };
 
+  const completeLoginWithLocation = async (
+    nextSession: AuthSession,
+    resetTo: (screen: AppScreen) => void
+  ) => {
+    const result = await Location.requestForegroundPermissionsAsync();
+
+    if (result.status !== Location.PermissionStatus.GRANTED) {
+      setSession(null);
+      setDeliveryLocation(null);
+      setShops([]);
+      setSelectedShop(null);
+      void clearStoredSession();
+      Alert.alert(
+        "Location required",
+        "Please turn on location access to see nearby shops and continue ordering."
+      );
+      resetTo("login");
+      return;
+    }
+
+    try {
+      const current = await Location.getCurrentPositionAsync({});
+      const currentLocation = {
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude
+      };
+      await updateCustomerLocation({
+        ...currentLocation,
+        token: nextSession.token
+      });
+      setDeliveryLocation(currentLocation);
+      setSession(nextSession);
+      await saveStoredSession(nextSession);
+      resetTo("home");
+    } catch {
+      setSession(null);
+      setDeliveryLocation(null);
+      setShops([]);
+      setSelectedShop(null);
+      void clearStoredSession();
+      Alert.alert(
+        "Location unavailable",
+        "We could not read your current location. Please turn on location and try login again."
+      );
+      resetTo("login");
+    }
+  };
+
   const openShop = (shop: Store, navigate: (screen: AppScreen) => void) => {
     if (shop.id !== selectedShop?.id) {
       setCart({});
@@ -498,7 +555,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="dark" />
         <Stack.Navigator
-          initialRouteName="onboarding"
+          initialRouteName="login"
           screenOptions={{
             animation: "slide_from_right",
             contentStyle: { backgroundColor: colors.background },
@@ -523,12 +580,12 @@ export default function App() {
                 initialPhone=""
                 lockPhone={false}
                 onComplete={async (nextSession) => {
-                  setSession(nextSession);
-                  await saveStoredSession(nextSession);
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: "location" }]
-                  });
+                  await completeLoginWithLocation(nextSession, (screen) =>
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: screen }]
+                    })
+                  );
                 }}
                 onRegister={() => navigation.replace("onboarding")}
               />

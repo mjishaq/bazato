@@ -1,7 +1,7 @@
 import WebSocket from "ws";
 
 const api = process.env.BAZZATO_API_URL ?? "http://localhost:4000";
-const adminPhone = process.env.BAZZATO_ADMIN_PHONE ?? "966500000000";
+const adminPhone = process.env.BAZZATO_ADMIN_PHONE ?? "1234567890";
 const customerPhone = process.env.BAZZATO_CUSTOMER_PHONE ?? "9876543210";
 const vendorPhone = process.env.BAZZATO_VENDOR_PHONE ?? "966511112222";
 const headers = { "Content-Type": "application/json" };
@@ -161,6 +161,8 @@ async function main() {
       phone: customerPhone,
       shopId: vendorLogin.shop.id,
       deliveryAddress: "Holistic Smoke Test Street",
+      deliveryLatitude: 24.6723896,
+      deliveryLongitude: 46.7128945,
       items: [{ productId: productPayload.id, quantity: 1 }]
     })
   });
