@@ -273,7 +273,10 @@ vendorRouter.get(
   "/admin/summary",
   requireAppRole("admin"),
   async (_req: AppAuthenticatedRequest, res) => {
-    const shops = await services.catalog.listShops({ limit: 100 });
+    const [shops, customers] = await Promise.all([
+      services.catalog.listShops({ limit: 100 }),
+      services.auth.listCustomers()
+    ]);
     const shopSummaries = await Promise.all(
       shops.map(async (shop) => {
         const [products, orders] = await Promise.all([
@@ -314,7 +317,7 @@ vendorRouter.get(
       }
     );
 
-    res.json({ shops: shopSummaries, totals });
+    res.json({ customers, shops: shopSummaries, totals });
   }
 );
 

@@ -8,7 +8,9 @@ import type {
   ShopInput
 } from "./catalogRepository.js";
 
-type PrismaShop = NonNullable<Awaited<ReturnType<typeof prisma.shop.findFirst>>>;
+type PrismaShop = NonNullable<Awaited<ReturnType<typeof prisma.shop.findFirst>>> & {
+  owner?: { phone: string } | null;
+};
 
 function distanceMetersBetween(
   from: { latitude: number; longitude: number },
@@ -64,7 +66,10 @@ function mapShop(shop: PrismaShop | null, distanceMeters?: number): Shop | null 
     distanceMeters: Math.round(distanceMeters ?? shop.radiusMeters),
     etaMinutes: "15-20",
     rating: Number(shop.rating),
-    isOpen: shop.isOpen
+    isOpen: shop.isOpen,
+    latitude: shop.latitude !== null ? Number(shop.latitude) : undefined,
+    longitude: shop.longitude !== null ? Number(shop.longitude) : undefined,
+    ownerPhone: shop.owner?.phone
   };
 }
 
@@ -102,6 +107,13 @@ export class PrismaCatalogRepository implements CatalogRepository {
         })
       : null;
     const rows = await prisma.shop.findMany({
+      include: {
+        owner: {
+          select: {
+            phone: true
+          }
+        }
+      },
       where: {
         isOpen: true,
         latitude: bounds
@@ -168,6 +180,13 @@ export class PrismaCatalogRepository implements CatalogRepository {
   async getShop(shopId: string) {
     return mapShop(
       await prisma.shop.findUnique({
+        include: {
+          owner: {
+            select: {
+              phone: true
+            }
+          }
+        },
         where: { id: shopId }
       })
     );
@@ -176,6 +195,13 @@ export class PrismaCatalogRepository implements CatalogRepository {
   async getShopByOwnerPhone(phone: string) {
     return mapShop(
       await prisma.shop.findFirst({
+        include: {
+          owner: {
+            select: {
+              phone: true
+            }
+          }
+        },
         where: {
           owner: {
             phone
@@ -236,6 +262,13 @@ export class PrismaCatalogRepository implements CatalogRepository {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
     const shop = await prisma.shop.upsert({
+      include: {
+        owner: {
+          select: {
+            phone: true
+          }
+        }
+      },
       where: { id },
       update: {
         category: input.category,

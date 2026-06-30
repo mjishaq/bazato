@@ -634,7 +634,7 @@ select:focus {
 .adminShopRow {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px 120px 90px;
+  grid-template-columns: minmax(220px, 1fr) 90px 96px 120px 90px;
   gap: 14px;
   align-items: center;
   border: 1px solid var(--line);
@@ -650,6 +650,29 @@ select:focus {
 }
 
 .adminShopRow small {
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.adminCustomerRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(180px, 0.7fr) minmax(220px, 1fr);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 16px;
+}
+
+.adminCustomerRow strong,
+.adminCustomerRow small {
+  display: block;
+}
+
+.adminCustomerRow small {
   color: var(--muted);
   margin-top: 3px;
 }

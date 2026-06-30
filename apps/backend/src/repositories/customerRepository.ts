@@ -14,6 +14,7 @@ export type CustomerProfile = CustomerProfileInput & {
 
 export interface CustomerRepository {
   getCustomerByPhone(phone: string): Promise<CustomerProfile | null>;
+  listCustomers(): Promise<CustomerProfile[]>;
   updateCustomerLocation(
     userId: string,
     location: { latitude: number; longitude: number }
@@ -26,6 +27,12 @@ const memoryCustomers = new Map<string, CustomerProfile>();
 export class MemoryCustomerRepository implements CustomerRepository {
   async getCustomerByPhone(phone: string) {
     return memoryCustomers.get(phone) ?? null;
+  }
+
+  async listCustomers() {
+    return Array.from(memoryCustomers.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
   }
 
   async upsertCustomer(input: CustomerProfileInput) {

@@ -42,7 +42,20 @@ type Shop = {
   name: string;
   category: string;
   isOpen: boolean;
+  latitude?: number;
+  longitude?: number;
+  ownerPhone?: string;
   rating: number;
+};
+
+type Customer = {
+  address?: string;
+  email?: string;
+  id: string;
+  latitude?: number;
+  longitude?: number;
+  name?: string;
+  phone: string;
 };
 
 type Summary = {
@@ -59,6 +72,7 @@ type Summary = {
 };
 
 type AdminSummary = {
+  customers: Customer[];
   totals: {
     activeOrders: number;
     completedOrders: number;
@@ -749,14 +763,40 @@ export default function VendorHome() {
                   <span>
                     <strong>{item.name}</strong>
                     <small>
-                      {item.category} - {item.productCount} items - rating {item.rating}
+                      {item.category} - +91 {item.ownerPhone ?? "Not available"}
+                    </small>
+                    <small>
+                      Location: {formatCoordinates(item.latitude, item.longitude)}
                     </small>
                   </span>
+                  <span>{item.productCount} items</span>
                   <span>{item.activeOrders} active</span>
                   <span>{item.completedOrders} completed</span>
                   <span>SAR {item.totalRevenue}</span>
                 </article>
               ))}
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="sectionHeader">
+              <h2>Registered customers</h2>
+              <span>{adminSummary?.customers.length ?? 0} customers</span>
+            </div>
+            <div className="productList">
+              {(adminSummary?.customers ?? []).map((customer) => (
+                <article className="adminCustomerRow" key={customer.id}>
+                  <span>
+                    <strong>{customer.name || "Customer"}</strong>
+                    <small>+91 {customer.phone}</small>
+                  </span>
+                  <span>{customer.email || "No email"}</span>
+                  <span>{customer.address || "No address"}</span>
+                </article>
+              ))}
+              {(adminSummary?.customers.length ?? 0) === 0 ? (
+                <div className="emptyState">No customers registered yet.</div>
+              ) : null}
             </div>
           </section>
         </section>
@@ -1398,6 +1438,14 @@ function AutoHeight({ children }: { children: ReactNode }) {
       <div ref={innerRef}>{children}</div>
     </div>
   );
+}
+
+function formatCoordinates(latitude?: number, longitude?: number) {
+  if (latitude === undefined || longitude === undefined) {
+    return "Not captured";
+  }
+
+  return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {

@@ -21,6 +21,10 @@ export class AuthService {
     return this.customerRepository.getCustomerByPhone(phone);
   }
 
+  listCustomers() {
+    return this.customerRepository.listCustomers();
+  }
+
   updateCustomerLocation(
     userId: string,
     location: { latitude: number; longitude: number }

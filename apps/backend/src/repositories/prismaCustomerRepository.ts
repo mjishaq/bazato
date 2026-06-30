@@ -5,6 +5,28 @@ import type {
 } from "./customerRepository.js";
 
 export class PrismaCustomerRepository implements CustomerRepository {
+  private mapCustomer(user: {
+    address: string | null;
+    authSubject: string;
+    email: string | null;
+    latitude: unknown;
+    longitude: unknown;
+    name: string | null;
+    phone: string;
+    preference: string | null;
+  }) {
+    return {
+      id: user.authSubject,
+      address: user.address ?? "",
+      email: user.email ?? "",
+      latitude: user.latitude !== null ? Number(user.latitude) : undefined,
+      longitude: user.longitude !== null ? Number(user.longitude) : undefined,
+      name: user.name ?? "",
+      phone: user.phone,
+      preference: user.preference ?? ""
+    };
+  }
+
   async getCustomerByPhone(phone: string) {
     const user = await prisma.user.findFirst({
       where: {
@@ -17,16 +39,18 @@ export class PrismaCustomerRepository implements CustomerRepository {
       return null;
     }
 
-    return {
-      id: user.authSubject,
-      address: user.address ?? "",
-      email: user.email ?? "",
-      latitude: user.latitude !== null ? Number(user.latitude) : undefined,
-      longitude: user.longitude !== null ? Number(user.longitude) : undefined,
-      name: user.name ?? "",
-      phone: user.phone,
-      preference: user.preference ?? ""
-    };
+    return this.mapCustomer(user);
+  }
+
+  async listCustomers() {
+    const users = await prisma.user.findMany({
+      orderBy: [{ name: "asc" }, { phone: "asc" }],
+      where: {
+        role: "CUSTOMER"
+      }
+    });
+
+    return users.map((user) => this.mapCustomer(user));
   }
 
   async upsertCustomer(input: CustomerProfileInput) {
@@ -50,16 +74,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
       }
     });
 
-    return {
-      id: user.authSubject,
-      address: user.address ?? input.address,
-      email: user.email ?? input.email,
-      latitude: user.latitude !== null ? Number(user.latitude) : undefined,
-      longitude: user.longitude !== null ? Number(user.longitude) : undefined,
-      name: user.name ?? input.name,
-      phone: user.phone,
-      preference: user.preference ?? input.preference
-    };
+    return this.mapCustomer(user);
   }
 
   async updateCustomerLocation(
@@ -87,15 +102,6 @@ export class PrismaCustomerRepository implements CustomerRepository {
       }
     });
 
-    return {
-      id: user.authSubject,
-      address: user.address ?? "",
-      email: user.email ?? "",
-      latitude: user.latitude !== null ? Number(user.latitude) : undefined,
-      longitude: user.longitude !== null ? Number(user.longitude) : undefined,
-      name: user.name ?? "",
-      phone: user.phone,
-      preference: user.preference ?? ""
-    };
+    return this.mapCustomer(user);
   }
 }

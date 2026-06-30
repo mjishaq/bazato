@@ -23,6 +23,9 @@ export type Shop = {
   etaMinutes: string;
   rating: number;
   isOpen: boolean;
+  latitude?: number;
+  longitude?: number;
+  ownerPhone?: string;
 };
 
 export type OrderStatus =

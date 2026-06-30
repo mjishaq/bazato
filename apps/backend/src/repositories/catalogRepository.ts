@@ -114,7 +114,10 @@ export class MemoryCatalogRepository implements CatalogRepository {
       distanceMeters: 100,
       etaMinutes: "15-20",
       rating: 4.5,
-      isOpen: true
+      isOpen: true,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      ownerPhone: input.ownerPhone
     };
     const existingIndex = shops.findIndex((item) => item.id === id);
 
